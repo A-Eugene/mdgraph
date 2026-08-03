@@ -1,122 +1,89 @@
 # mdgraph
 
-A knowledge graph for research projects, in plain markdown. Nodes are sections
-you write; edges are links you type; history is append-only. No LLM sits between
-a finding and its storage, so nothing is lost in extraction — and reads/writes
-cost approximately nothing.
+Cross-session memory for a repository, in plain markdown. An append-only
+WORKLOG plus linked notes under `.mdgraph/`. No model sits between a finding and
+its storage, so nothing is lost in extraction and a write costs nothing.
 
-Built as the boring alternative to LLM-extraction memory engines (cognee, mem0,
-et al.), whose measured write amplification (~26× tokens out per token stored,
-on my corpus) buys a graph that shreds curated structure and drops the numbers.
-mdgraph inverts the design: **the author draws the node boundaries, the payload
-never passes through a model, and the graph is explicit in the text.**
+The conventions themselves live in [`SKILL.md`](SKILL.md) — that file is the
+contract, and this one is why it looks the way it does.
 
 ![architecture](architecture.svg)
 
-## The three layers
+## Why not an extraction engine
 
-| layer | file(s) | role |
+LLM memory engines (cognee, mem0, and kin) read your text, extract entities and
+relations, and store the extraction. Three consequences, all measured or
+structural rather than hypothetical:
+
+- **Writes amplify.** Extraction *expands* — entities, relations, and summaries
+  per chunk. On my own corpus that ran ~26× tokens out per token stored.
+- **The payload is what survives, and it isn't your text.** A finding like
+  "NFP killed at tick level, t=0.1–0.6, ZN-only" becomes triples that keep the
+  nouns and drop the number, the threshold, and the verdict.
+- **Merging destroys history.** Once a node is updated, what it used to say is
+  gone — so you cannot rebuild the log from the graph.
+
+mdgraph inverts each: the author draws the node boundaries, the payload never
+passes through a model, and the graph is written in the text.
+
+## The shape
+
+```
+log → view   cheap, lossless, repeatable
+view → log   impossible
+```
+
+So the append-only text is the source of truth and every index is a cache.
+`graph.py` holds to that literally — it re-parses on each run and stores nothing.
+
+Three layers, and it matters which is which:
+
+| layer | what | role |
 |---|---|---|
-| **TRUTH** | reports / topic files / `GLOSSARY.md` | Nodes = verbatim sections. Append-only. All numbers with provenance, inline. |
-| **ROUTER** | `WORKLOG.md` | Dated ledger of verdicts + pointers. The push layer — read at session start, appended at task end. |
-| **CACHE** | anything `graph.py` emits | Derived from the markdown on demand. Disposable, rebuildable, never authoritative. |
+| **notes** | `.mdgraph/*.md` | truth — verbatim, append-only, numbers with provenance |
+| **WORKLOG** | `.mdgraph/WORKLOG.md` | router — dated verdicts and pointers, read on arrival |
+| **queries** | `graph.py` output | cache — derived, disposable, never authoritative |
 
-The direction of derivation is the whole design: **log → view is cheap and
-lossless; view → log is impossible** (a merged graph node has destroyed its
-history). So truth lives in the append-only text, and every index is a cache.
+The router/truth split is the load-bearing one. Memory's job is not to hand you
+the answer; it is to tell you where to look and whether looking is worth it. A
+number in the log is a dated hint — the note it points at is what you act on.
+That is also what keeps the two from drifting: only one of them is ever right by
+construction.
 
-## Nodes
-
-- A node is a **section or file with a stable heading**. One concept, finding,
-  or kill per node. Granularity is chosen by the author, never by extraction.
-- Node body is self-contained and verdict-first. For concepts, four parts:
-  **what it is · how it's measured/used · how it affects · what was
-  expected/found.**
-- Load-bearing numbers appear in the node itself with provenance (date, dataset,
-  statistic). A number that lives only in a link target is a broken node.
-
-## Edges
-
-| syntax | meaning |
-|---|---|
-| `[[slug]]` or `[[file#Section]]` | relates-to (untyped association) |
-| `Supersedes: [[x]]` / `Superseded-by: [[x]]` | temporal edge — this node replaces that one |
-| `Kills: [[x]]` / `Killed-by: [[x]]` | verdict edge — the idea is dead; do not re-fund it |
-| `Cites: [[x]]` | evidence edge — restate the number at the citing site, never outsource it |
-
-- A `[[slug]]` with no target yet is fine — it marks a node worth writing
-  (`graph.py orphans` lists them).
-- Superseded nodes are **never edited or deleted**. They get one italic banner —
-  *Superseded by [[x]] (date): numbers below are old-convention.* — and stay.
-  History is append-only; correction happens forward.
-
-## WORKLOG.md — the router
-
-Append-only, newest **last**, at the project's reports root.
-
-```markdown
-## YYYY-MM-DD — slug
-- **STATUS:** ALIVE | DEAD | WATCH | FROZEN
-- tried → why → result, one line
-- **Pointer:** path/to/node.md#section
-```
-
-Rules:
-
-- **WORKLOG is routing, nodes are truth.** Any number in the log is a dated
-  hint — ground in the pointed node before acting on it.
-- The log is never edited retroactively; stale entries are corrected by newer
-  entries. (Same mechanics as supersession banners — and it makes concurrent
-  sessions safe: appends to the tail merge trivially.)
-- **Session start: read the tail** (~last 10 entries). Re-read it again right
-  before appending, to catch entries from concurrent sessions.
-- **Task end / before any context compaction: append an entry.** A finding that
-  lives only in a context window is not recorded.
-- Kills always get an entry. The deterministic kill-list push is the system's
-  highest-value function: retrieval is *pull* and only answers questions you
-  thought to ask — the do-not-re-fund list has to arrive *unprompted*.
-
-## Traversal
-
-`grep` answers most queries (`grep -rn "\[\[slug\]\]"` = incoming edges).
-For the rest:
-
-```bash
-python3 graph.py <vault-dir> neighbors <slug> [--hops N]   # nodes within N hops
-python3 graph.py <vault-dir> dead                          # every kill edge
-python3 graph.py <vault-dir> orphans                       # linked but unwritten nodes
-```
-
-Stdlib only, no dependencies. Re-parses the vault every run; if a vault ever
-outgrows that, emit SQLite *derived from the markdown* — gitignored, never
-authoritative.
-
-## Adopting in a project
-
-Default home is a **`.mdgraph/` directory at the repo root** — `WORKLOG.md` plus
-one node file per finding, committed with the repo (so it clones, versions, and
-stays private exactly when the repo does). Cross-repo queries need no central
-store: run `graph.py` on a parent directory (`~/Projects`) and every repo's
-`.mdgraph/` is swept in one pass; `[[slug]]` resolution is name-based, so links
-work across repos. A repo whose truth layer already exists elsewhere (a reports
-tree) declares that override in its CLAUDE.md instead — never duplicate an
-existing truth layer into `.mdgraph/`.
-
-1. Create `.mdgraph/WORKLOG.md` with the entry format at top.
-2. Add to the project's agent instructions (e.g. `CLAUDE.md`): read the WORKLOG
-   tail at session start; append at task end / before compacting; nodes are
-   append-only with supersession banners.
-3. Backfill one WORKLOG entry per existing report — status word, tried→why→
-   result, pointer. Kills first; they are the do-not-re-fund list.
-
-## Using with Claude Code
-
-Drop `SKILL.md` + `graph.py` into `~/.claude/skills/mdgraph/` (or symlink this
-repo there). The skill teaches the conventions; the script does the traversal.
-
-## Why not a database?
+## Why markdown and not a database
 
 Markdown *is* the database: git-versioned, greppable, diffable, human-auditable,
-and readable by an agent with no tool layer. A DB as primary storage re-creates
-the failure mode this replaces — an opaque store with machinery between you and
-your own knowledge. Databases here are views, and views are disposable.
+and readable by an agent with no tool layer between. SQL is the right query
+engine and the wrong source of truth — a store you author *into* becomes opaque
+to `git diff` and to anyone reading it raw, which is the failure this replaces
+with the LLM merely removed. If a vault outgrows a whole-directory rescan, emit
+SQLite *derived* from the markdown: gitignored, rebuildable, never authoritative.
+
+## Scope
+
+Good at: durable conclusions, dead ends that must not be re-attempted, decisions
+whose rationale outlives the session that made them.
+
+Not this: an episodic record of everything that happened (your agent transcripts
+already are that), nor a substitute for a project's existing docs. If a repo
+already keeps findings somewhere, leave them there — one home per repo, not
+necessarily this one.
+
+## Install
+
+```bash
+mkdir -p ~/.claude/skills/mdgraph
+cp SKILL.md graph.py ~/.claude/skills/mdgraph/
+```
+
+Then add the trigger to your always-loaded agent instructions — a skill body
+only loads when the skill is invoked, so "read the WORKLOG on arrival" has to
+live somewhere that is read on arrival:
+
+> Any repo containing `.mdgraph/`: read the tail of `.mdgraph/WORKLOG.md` before
+> substantive work; append an entry at task end if a future session would
+> otherwise repeat the work.
+
+In a project, create `.mdgraph/WORKLOG.md` and add entries as findings land.
+Backfilling existing work is optional — start with the kills, since those are
+the entries that pay for themselves.
