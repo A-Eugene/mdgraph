@@ -40,9 +40,24 @@ Three layers, and it matters which is which:
 
 | layer | what | role |
 |---|---|---|
-| **notes** | `.mdgraph/*.md` | truth — verbatim, append-only, numbers with provenance |
+| **notes** | `.mdgraph/notes/<slug>.md` | truth — verbatim, append-only, numbers with provenance |
 | **WORKLOG** | `.mdgraph/WORKLOG.md` | router — dated verdicts and pointers, read on arrival |
 | **queries** | `graph.py` output | cache — derived, disposable, never authoritative |
+
+```
+<repo>/.mdgraph/
+├── WORKLOG.md              the router
+├── WORKLOG-2026.md         rolled tail, once the log gets long
+└── notes/
+    ├── upload-queue-contention.md
+    ├── pool-sizing.md          (superseded, banner on top, kept)
+    └── pool-sizing-revised.md
+```
+
+The filename under `notes/` is the `[[slug]]` other notes link to — name it for
+the finding, not the date. There is no `graphs/` directory because no graph is
+ever stored: the edges live in the notes, and `graph.py` keeps nothing between
+runs.
 
 The router/truth split is the load-bearing one. Memory's job is not to hand you
 the answer; it is to tell you where to look and whether looking is worth it. A
@@ -84,6 +99,7 @@ live somewhere that is read on arrival:
 > substantive work; append an entry at task end if a future session would
 > otherwise repeat the work.
 
-In a project, create `.mdgraph/WORKLOG.md` and add entries as findings land.
+In a project, create `.mdgraph/WORKLOG.md` and `.mdgraph/notes/`, then add
+entries as findings land.
 Backfilling existing work is optional — start with the kills, since those are
 the entries that pay for themselves.

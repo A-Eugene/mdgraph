@@ -17,9 +17,15 @@ nothing.
 ## Layout
 
 ```
-<repo>/.mdgraph/WORKLOG.md   append-only ledger: what happened, in order
-<repo>/.mdgraph/*.md         notes: one finding / decision / kill per file
+<repo>/.mdgraph/WORKLOG.md        append-only ledger: what happened, in order
+<repo>/.mdgraph/notes/<slug>.md   one finding / decision / kill per file
+<repo>/.mdgraph/WORKLOG-<year>.md rolled tail, once the log gets long
 ```
+
+The filename under `notes/` is the `[[slug]]` other notes link to, so name it
+for the finding (`upload-queue-contention.md`), not for the date. Nothing stores
+a graph — the edges are inside the notes, and `graph.py` keeps nothing between
+runs.
 
 Committed with the repo, so it clones, versions, and stays private exactly when
 the repo does. **Rebinding:** if a repo already keeps its findings elsewhere
@@ -85,7 +91,7 @@ A `[[slug]]` with no file yet is fine; it marks a note worth writing, and
 - Tried exponential backoff on the upload queue to cut 429s → made the tail
   latency worse (p99 4.2s → 11s) because retries stacked behind the same lock.
 - Kills: [[exponential-backoff-upload]]
-- **Pointer:** .mdgraph/upload-queue-contention.md
+- **Pointer:** .mdgraph/notes/upload-queue-contention.md
 ```
 
 Newest entry last. Status is one of **ALIVE / DEAD / WATCH / FROZEN** — DEAD
