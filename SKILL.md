@@ -11,13 +11,32 @@ sits between a finding and its storage, so nothing can be lost in extraction.
 ## Structure (three layers, fixed roles)
 
 ```
-reports / topic files    TRUTH.   Nodes = sections. Verbatim, append-only.
+node files               TRUTH.   Nodes = sections. Verbatim, append-only.
 WORKLOG.md               ROUTER.  Dated ledger of verdicts + pointers. Push layer.
 derived indexes          CACHE.   Built from markdown on demand. Disposable.
 ```
 
 Truth is never stored in a DB. A DB may be *derived* (see Traversal) and
 deleted at will.
+
+## Where it lives: `.mdgraph/`
+
+Default home in every repo — memory infrastructure, hidden like `.claude/`:
+
+```
+<repo>/.mdgraph/WORKLOG.md   the router
+<repo>/.mdgraph/*.md         node files (one finding/decision/kill per file)
+```
+
+Committed with the repo: clones, versions, and stays private exactly when the
+repo does. Cross-repo queries need no central store — `graph.py` on a parent
+directory (e.g. `~/Projects`) sweeps every repo's `.mdgraph/` in one pass, and
+`[[slug]]` resolution is by name, not path, so links work across repos.
+
+**Rebinding:** a repo whose truth layer already exists elsewhere (e.g. a
+reports/ tree with its own conventions) declares the override in its CLAUDE.md —
+nodes stay where they are, WORKLOG stays with them. Never duplicate an existing
+truth layer into `.mdgraph/`.
 
 ## Nodes
 

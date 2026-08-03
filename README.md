@@ -93,7 +93,16 @@ authoritative.
 
 ## Adopting in a project
 
-1. Create `WORKLOG.md` with the entry format at top.
+Default home is a **`.mdgraph/` directory at the repo root** — `WORKLOG.md` plus
+one node file per finding, committed with the repo (so it clones, versions, and
+stays private exactly when the repo does). Cross-repo queries need no central
+store: run `graph.py` on a parent directory (`~/Projects`) and every repo's
+`.mdgraph/` is swept in one pass; `[[slug]]` resolution is name-based, so links
+work across repos. A repo whose truth layer already exists elsewhere (a reports
+tree) declares that override in its CLAUDE.md instead — never duplicate an
+existing truth layer into `.mdgraph/`.
+
+1. Create `.mdgraph/WORKLOG.md` with the entry format at top.
 2. Add to the project's agent instructions (e.g. `CLAUDE.md`): read the WORKLOG
    tail at session start; append at task end / before compacting; nodes are
    append-only with supersession banners.
