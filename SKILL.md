@@ -85,6 +85,10 @@ A `[[slug]]` with no file yet is fine; it marks a note worth writing, and
 
 ## WORKLOG entry
 
+Newest entry last. Two shapes, depending on whether the thing has a lifecycle.
+
+**Something you tried, that can live or die** — status earns its place here:
+
 ```markdown
 ## 2026-03-14 — retry-backoff
 - **STATUS:** DEAD
@@ -94,8 +98,22 @@ A `[[slug]]` with no file yet is fine; it marks a note worth writing, and
 - **Pointer:** .mdgraph/notes/upload-queue-contention.md
 ```
 
-Newest entry last. Status is one of **ALIVE / DEAD / WATCH / FROZEN** — DEAD
-also carries a `Kills:` edge, since the edge is what the query reads.
+**A plain fact** — a measurement, a constraint, an architecture note. No status:
+
+```markdown
+## 2026-03-19 — systemd-path
+- A systemd unit's PATH omits `~/.local/bin`, so a binary installed there is
+  not found under `systemd-run` even though it resolves in an interactive
+  shell. Cost two silent failures before it was diagnosed.
+- **Pointer:** .mdgraph/notes/minimal-environment-traps.md
+```
+
+**Status is optional**, and only means something for things you will revisit:
+**ALIVE / DEAD / WATCH / FROZEN**. A fact has no lifecycle — its validity is
+handled by supersession, not by a status word, and tagging it `ALIVE` says
+nothing. Use it where it discriminates; leave it off where it doesn't.
+
+A DEAD entry does carry a `Kills:` edge, since the edge is what the query reads.
 
 ## Queries
 
