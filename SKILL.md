@@ -14,6 +14,13 @@ Notes are markdown you write; edges are links you type. No model sits between a
 finding and its storage, so nothing is lost in extraction and a write costs
 nothing.
 
+**Every entry carries a verdict.** Record what it *means*, not only what
+happened — the interpretation is the one thing nothing else derives. Git
+history, the transcript, and any code-graph tool already hold what happened.
+"p99 went 4.2s → 11s" is data; "backoff made it worse because retries stack
+behind the same lock, so the problem is contention, not rate" is memory. An
+entry with no verdict is a log line, and you already have logs.
+
 ## Layout
 
 ```
@@ -98,7 +105,8 @@ Newest entry last. Two shapes, depending on whether the thing has a lifecycle.
 - **Pointer:** .mdgraph/notes/upload-queue-contention.md
 ```
 
-**A plain fact** — a measurement, a constraint, an architecture note. No status:
+**Something you learned** — a measurement, a constraint, a trap. No lifecycle,
+so no status; the verdict is in the prose:
 
 ```markdown
 ## 2026-03-19 — systemd-path
@@ -108,10 +116,11 @@ Newest entry last. Two shapes, depending on whether the thing has a lifecycle.
 - **Pointer:** .mdgraph/notes/minimal-environment-traps.md
 ```
 
-**Status is optional**, and only means something for things you will revisit:
-**ALIVE / DEAD / WATCH / FROZEN**. A fact has no lifecycle — its validity is
-handled by supersession, not by a status word, and tagging it `ALIVE` says
-nothing. Use it where it discriminates; leave it off where it doesn't.
+**Status is optional**, and only discriminates for things you will revisit:
+**ALIVE / DEAD / WATCH / FROZEN**. Something you merely learned has no lifecycle
+— its validity is handled by supersession, not a status word, and tagging it
+`ALIVE` says nothing. Optional status never means optional judgment: both shapes
+state what the thing means, one of them just also tracks whether it's still live.
 
 A DEAD entry does carry a `Kills:` edge, since the edge is what the query reads.
 
