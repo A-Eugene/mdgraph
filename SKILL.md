@@ -5,7 +5,9 @@ description: >-
   linked markdown notes under `.mdgraph/`. Use when recording what was decided,
   tried, or killed; when asked "did we try this already", "why was that dropped",
   "what did we conclude"; when starting work in a repo that has a `.mdgraph/`
-  directory; and before compacting context.
+  directory; before compacting context; and BEFORE asserting or recommending
+  anything that rests on past work — consult the vault, never reconstruct from
+  memory.
 ---
 
 # mdgraph
@@ -42,8 +44,15 @@ repo's agent instructions — the point is one home per repo, not this one.
 `graph.py` takes any directory, so pointing it at a parent sweeps every repo's
 `.mdgraph/` at once. `[[slug]]` resolves by name, not path — links cross repos.
 
-## The four rules that aren't default
+## The five rules that aren't default
 
+0. **Consult before asserting.** Any claim about past decisions, results, or why
+   something was rejected gets a vault grep *first* — `dead` for kills,
+   `grep -in <term> WORKLOG.md` for rationale. A compressed memory of a conclusion
+   without its reason is how rationales get fabricated around true facts: the vault
+   holds the reason precisely so it never has to be reconstructed. (Learned twice on
+   2026-08-07: a killed idea re-recommended, a recorded jurisdiction rationale
+   replaced with an invented one.)
 1. **Append-only.** Never edit or delete a note to correct it. Add the new note,
    and put one italic banner atop the old one:
    *Superseded by [[new-slug]] (YYYY-MM-DD).* History is how you tell a finding

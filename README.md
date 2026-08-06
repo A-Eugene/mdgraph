@@ -103,3 +103,27 @@ In a project, create `.mdgraph/WORKLOG.md` and `.mdgraph/notes/`, then add
 entries as findings land.
 Backfilling existing work is optional — start with the kills, since those are
 the entries that pay for themselves.
+
+## Enforcement (hooks)
+
+The skill text binds only when loaded, and it loads at write time — so the read-side
+discipline (rule 0) gets a mechanical layer. Two hooks under `hooks/`, registered in
+`~/.claude/settings.json` (2026-08-07):
+
+```json
+"hooks": {
+  "SessionStart": [{"hooks": [{"type": "command", "command": "/root/.claude/hooks/mdgraph-index.sh"}]}],
+  "Stop":         [{"hooks": [{"type": "command", "command": "/root/.claude/hooks/mdgraph-nudge.sh"}]}]
+}
+```
+
+- `mdgraph-index.sh` (SessionStart) — injects every vault's WORKLOG heading index plus
+  the full `Kills:` list as ambient context (~1k tokens). Read-side: facts that are in
+  context do not get fabricated around; out-of-context ones do — both 2026-08-07
+  incidents were out-of-context assertions.
+- `mdgraph-nudge.sh` (Stop) — warns when code commits have outpaced the WORKLOG.
+  Write-side: existed since the format transition, sat unregistered until 2026-08-07.
+
+Deployment: this repo is the source; `~/.claude/skills/mdgraph/` and
+`~/.claude/hooks/` are copies. Edit here, commit, then copy out — never edit the
+global copies directly.
