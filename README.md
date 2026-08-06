@@ -19,7 +19,7 @@ structural rather than hypothetical:
   per chunk. On my own corpus that ran ~26× tokens out per token stored.
 - **The payload is what survives, and it isn't your text.** A finding like
   "NFP killed at tick level, t=0.1–0.6, ZN-only" becomes triples that keep the
-  nouns and drop the number, the threshold, and the verdict.
+  nouns and drop the number, the threshold, and the mechanism.
 - **Merging destroys history.** Once a node is updated, what it used to say is
   gone — so you cannot rebuild the log from the graph.
 
@@ -41,7 +41,7 @@ Three layers, and it matters which is which:
 | layer | what | role |
 |---|---|---|
 | **notes** | `.mdgraph/notes/<slug>.md` | truth — verbatim, append-only, numbers with provenance |
-| **WORKLOG** | `.mdgraph/WORKLOG.md` | router — dated verdicts and pointers, read on arrival |
+| **WORKLOG** | `.mdgraph/WORKLOG.md` | router — dated exposition and pointers, read on arrival |
 | **queries** | `graph.py` output | cache — derived, disposable, never authoritative |
 
 ```

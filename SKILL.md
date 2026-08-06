@@ -16,12 +16,15 @@ Notes are markdown you write; edges are links you type. No model sits between a
 finding and its storage, so nothing is lost in extraction and a write costs
 nothing.
 
-**Every entry carries a verdict.** Record what it *means*, not only what
-happened — the interpretation is the one thing nothing else derives. Git
-history, the transcript, and any code-graph tool already hold what happened.
-"p99 went 4.2s → 11s" is data; "backoff made it worse because retries stack
-behind the same lock, so the problem is contention, not rate" is memory. An
-entry with no verdict is a log line, and you already have logs.
+**Entries are exposition, not opinion.** Record what happened with enough
+mechanism and number that a future reader can infer the conclusion themselves —
+never write the conclusion as a judgment. "p99 went 4.2s → 11s" alone is a log
+line; add the mechanism — "retries stacked behind the same lock" — and the entry
+now carries everything needed to infer what to do, without telling anyone what
+to think. Decisions that actually happened are facts and belong ("pursuit
+stopped after this result", "the operator hit the country wall at signup");
+verdicts and directives ("DEAD — do not re-attempt", "deploy it") are opinions
+and do not.
 
 ## Layout
 
@@ -61,9 +64,10 @@ repo's agent instructions — the point is one home per repo, not this one.
    hint. Open the pointed file before acting on it. Stale entries are corrected
    by newer entries, never rewritten in place — which also makes concurrent
    sessions safe, since appends to the tail merge cleanly.
-3. **A kill is the highest-value entry.** Recording that something failed, with
-   why, is what stops it being re-attempted. Every dead idea gets `Kills:` (see
-   below) so the query finds it.
+3. **An ended pursuit is the highest-value entry.** Recording that an attempt
+   ended, with the result and the mechanism that ended it, is what stops the
+   work being repeated. Every ended pursuit gets `Kills:` (see below) — the
+   edge records the decision event, and the query finds it.
 4. **Write when a future session would otherwise repeat the work.** That is the
    whole test. A decision, a result, a dead end, a constraint discovered the
    hard way — yes. Progress narration ("refactored the parser") — no.
@@ -93,7 +97,7 @@ Each on its own line. This is what `graph.py` parses, so the form is exact:
 |---|---|
 | `[[slug]]` | relates to |
 | `Supersedes: [[x]]` / `Superseded-by: [[x]]` | this replaces that |
-| `Kills: [[x]]` / `Killed-by: [[x]]` | that idea is dead |
+| `Kills: [[x]]` / `Killed-by: [[x]]` | pursuit of that idea ended here |
 | `Cites: [[x]]` | evidence — restate the number here, don't outsource it |
 
 A `[[slug]]` with no file yet is fine; it marks a note worth writing, and
@@ -101,21 +105,22 @@ A `[[slug]]` with no file yet is fine; it marks a note worth writing, and
 
 ## WORKLOG entry
 
-Newest entry last. Two shapes, depending on whether the thing has a lifecycle.
+Newest entry last. Two shapes, both pure exposition.
 
-**Something you tried, that can live or die** — status earns its place here:
+**Something you tried** — what was tried, the result with its numbers, the
+mechanism, and the decision event if one occurred. No status words, no verdict
+sentences — the reader infers:
 
 ```markdown
 ## 2026-03-14 — retry-backoff
-- **STATUS:** DEAD
-- Tried exponential backoff on the upload queue to cut 429s → made the tail
-  latency worse (p99 4.2s → 11s) because retries stacked behind the same lock.
+- Tried exponential backoff on the upload queue to cut 429s → tail latency
+  worsened (p99 4.2s → 11s): retries stacked behind the same lock. Pursuit
+  stopped on this result.
 - Kills: [[exponential-backoff-upload]]
 - **Pointer:** .mdgraph/notes/upload-queue-contention.md
 ```
 
-**Something you learned** — a measurement, a constraint, a trap. No lifecycle,
-so no status; the verdict is in the prose:
+**Something you learned** — a measurement, a constraint, a trap:
 
 ```markdown
 ## 2026-03-19 — systemd-path
@@ -125,18 +130,16 @@ so no status; the verdict is in the prose:
 - **Pointer:** .mdgraph/notes/minimal-environment-traps.md
 ```
 
-**Status is optional**, and only discriminates for things you will revisit:
-**ALIVE / DEAD / WATCH / FROZEN**. Something you merely learned has no lifecycle
-— its validity is handled by supersession, not a status word, and tagging it
-`ALIVE` says nothing. Optional status never means optional judgment: both shapes
-state what the thing means, one of them just also tracks whether it's still live.
-
-A DEAD entry does carry a `Kills:` edge, since the edge is what the query reads.
+**No STATUS marks and no verdicts.** Lifecycle lives in the edges (`Kills:`,
+`Superseded-by:`) and in later entries; a recorded decision ("pursuit stopped",
+"adopted on date X by Y") is a fact — the judgment behind it stays with whoever
+made it. An entry that ended a pursuit carries the `Kills:` edge, since the
+edge is what the query reads.
 
 ## Queries
 
 ```bash
-python3 ~/.claude/skills/mdgraph/graph.py <dir> dead            # every kill, by edge and by status
+python3 ~/.claude/skills/mdgraph/graph.py <dir> dead            # every ended pursuit, by edge (legacy STATUS also parsed)
 python3 ~/.claude/skills/mdgraph/graph.py <dir> neighbors <slug> [--hops 2]
 python3 ~/.claude/skills/mdgraph/graph.py <dir> orphans
 ```
