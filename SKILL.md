@@ -39,13 +39,40 @@ for the finding (`upload-queue-contention.md`), not for the date. Nothing stores
 a graph — the edges are inside the notes, and `graph.py` keeps nothing between
 runs.
 
-Committed with the repo, so it clones, versions, and stays private exactly when
-the repo does. **Rebinding:** if a repo already keeps its findings elsewhere
-(a reports tree, a docs site), leave them there and record the location in that
-repo's agent instructions — the point is one home per repo, not this one.
+**Storage — the vault branch (default).** A vault committed on a code branch is
+invisible from every other branch until a merge: entries written on a feature
+branch silently vanish from the reader's view on main. So by default the vault
+does NOT live on a code branch — it lives on its own orphan branch `mdgraph`
+(WORKLOG.md and notes/ at the branch root), mounted at `.mdgraph/` in the
+checkout via `git worktree`, with `.mdgraph/` gitignored by every code branch.
+One shared vault, readable and writable from ANY branch, committed and pushed
+independently of code. Setup, once per repo:
+
+    git switch --orphan mdgraph && git commit --allow-empty -m "vault" && git switch -
+    echo ".mdgraph/" >> .gitignore
+    git worktree add .mdgraph mdgraph
+
+(Dirty working tree, or multiple worktree checkouts of the same repo: build the
+branch in a scratch clone and `git push <main-repo-path> mdgraph:mdgraph`
+instead of switching in place; a branch can be mounted in only ONE worktree, so
+secondary checkouts symlink `.mdgraph` to the primary's mount.)
+
+Commits inside `.mdgraph/` go to the `mdgraph` branch (`git -C .mdgraph add -A
+&& git -C .mdgraph commit`); push it like any branch. After a fresh clone,
+re-run only the `git worktree add` line. Cost of the design: the vault no
+longer snapshots with a code commit — entries are dated, which is the
+compensation. Concurrent appends merge cleanly (append-only tail).
+
+**Fallback — in-tree vault:** a repo with a single long-lived branch may simply
+commit `.mdgraph/` on it; that was the old default and existing repos doing it
+keep working. Migrate when a second long-lived branch starts producing findings.
+**Rebinding:** if a repo already keeps its findings elsewhere (a reports tree,
+a docs site), leave them there and record the location in that repo's agent
+instructions — the point is one home per repo, not this one.
 
 `graph.py` takes any directory, so pointing it at a parent sweeps every repo's
-`.mdgraph/` at once. `[[slug]]` resolves by name, not path — links cross repos.
+`.mdgraph/` at once (worktree mounts included — they are real directories).
+`[[slug]]` resolves by name, not path — links cross repos.
 
 ## The five rules that aren't default
 
