@@ -3,7 +3,7 @@ name: mdgraph
 description: >-
   Durable cross-session memory for any repository — an append-only WORKLOG plus
   linked markdown notes under `.mdgraph/`. Use when recording what was decided,
-  tried, or killed; when asked "did we try this already", "why was that dropped",
+  tried, or ended; when asked "did we try this already", "why was that dropped",
   "what did we conclude"; when starting work in a repo that has a `.mdgraph/`
   directory; before compacting context; and BEFORE asserting or recommending
   anything that rests on past work — consult the vault, never reconstruct from
@@ -31,7 +31,7 @@ and do not.
 ```
 <repo>/.mdgraph/WORKLOG.md        append-only ledger: what happened, in order
 <repo>/.mdgraph/WORKLOG-<area>.md one ledger per implementation / sub-project
-<repo>/.mdgraph/notes/<slug>.md   one finding / decision / kill per file — SHARED
+<repo>/.mdgraph/notes/<slug>.md   one finding / decision / ended pursuit — SHARED
 <repo>/.mdgraph/WORKLOG-<year>.md rolled tail, once a log gets long
 ```
 
@@ -133,20 +133,22 @@ by a re-sync or, worse, committed upstream and publish local paths.
 ## The five rules that aren't default
 
 0. **Consult before asserting.** Any claim about past decisions, results, or why
-   something was rejected gets a vault grep *first* — `dead` for kills,
+   something was rejected gets a vault grep *first* — `dead` for ended pursuits,
    `grep -in <term> WORKLOG.md` for rationale. A compressed memory of a conclusion
    without its reason is how rationales get fabricated around true facts: the vault
    holds the reason precisely so it never has to be reconstructed. (Learned twice on
-   2026-08-07: a killed idea re-recommended, a recorded jurisdiction rationale
+   2026-08-07: an already-ended pursuit re-recommended, a recorded jurisdiction rationale
    replaced with an invented one.)
 1. **Append-only.** Never edit or delete a note to correct it. Add the new note,
    and put one italic banner atop the old one:
    *Superseded by [[new-slug]] (YYYY-MM-DD).* History is how you tell a finding
    from a finding that used to be true.
-2. **The log routes; the notes are true.** Any number in WORKLOG is a dated
-   hint. Open the pointed file before acting on it. Stale entries are corrected
-   by newer entries, never rewritten in place — which also makes concurrent
-   sessions safe, since appends to the tail merge cleanly.
+2. **The log routes; the notes carry the detail.** Any number in WORKLOG is a
+   dated hint. Open the pointed file before acting on it. Neither layer is
+   "true" — a note records what was found and when, and a later note can
+   supersede it. Stale entries are corrected by newer entries, never rewritten
+   in place, which also makes concurrent sessions safe since appends to the
+   tail merge cleanly.
 3. **An ended pursuit is the highest-value entry.** Recording that an attempt
    ended, with the result and the mechanism that ended it, is what stops the
    work being repeated. Every ended pursuit gets `Kills:` (see below) — the
@@ -167,7 +169,7 @@ Append-only governs corrections. It is not a ban on housekeeping.
   credential; rewrite history only if rotation is impossible.
 - **Scope abandoned, or the log grew long** → roll, don't delete.
   `git mv .mdgraph/WORKLOG.md .mdgraph/WORKLOG-2026.md` and start a fresh tail.
-  Old kills stay greppable and `graph.py` still sees them, while the tail-read
+  Old entries stay greppable and `graph.py` still sees them, while the tail-read
   stays cheap.
 - **Genuinely junk** — a mis-fired entry, a duplicate, a note about work that
   never happened → delete it. Not everything written down is a finding.
@@ -212,6 +214,11 @@ sentences — the reader infers:
   shell. Cost two silent failures before it was diagnosed.
 - **Pointer:** .mdgraph/notes/minimal-environment-traps.md
 ```
+
+**Keep an entry short.** A few lines carrying the numbers, the mechanism, and
+the decision event — the detail belongs in the pointed note, not the log. The
+tail-read is ten entries at a glance, so length in the log costs every future
+reader; and a long entry is usually narration that rule 4 already excludes.
 
 **No STATUS marks and no verdicts.** Lifecycle lives in the edges (`Kills:`,
 `Superseded-by:`) and in later entries; a recorded decision ("pursuit stopped",

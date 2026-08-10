@@ -18,8 +18,9 @@ structural rather than hypothetical:
 - **Writes amplify.** Extraction *expands* — entities, relations, and summaries
   per chunk. On my own corpus that ran ~26× tokens out per token stored.
 - **The payload is what survives, and it isn't your text.** A finding like
-  "NFP killed at tick level, t=0.1–0.6, ZN-only" becomes triples that keep the
-  nouns and drop the number, the threshold, and the mechanism.
+  "NFP on crypto perps netted 1–6 bps at tick level, t=0.1–0.6, so the pursuit
+  stopped and the family stayed ZN-only" becomes triples that keep the nouns and
+  drop the number, the threshold, and the mechanism.
 - **Merging destroys history.** Once a node is updated, what it used to say is
   gone — so you cannot rebuild the log from the graph.
 
@@ -76,8 +77,8 @@ SQLite *derived* from the markdown: gitignored, rebuildable, never authoritative
 
 ## Scope
 
-Good at: durable conclusions, dead ends that must not be re-attempted, decisions
-whose rationale outlives the session that made them.
+Good at: durable findings, pursuits that ended and the mechanism that ended them,
+decisions whose rationale outlives the session that made them.
 
 Not this: an episodic record of everything that happened (your agent transcripts
 already are that), nor a substitute for a project's existing docs. If a repo
@@ -101,7 +102,7 @@ live somewhere that is read on arrival:
 
 In a project, create `.mdgraph/WORKLOG.md` and `.mdgraph/notes/`, then add
 entries as findings land.
-Backfilling existing work is optional — start with the kills, since those are
+Backfilling existing work is optional — start with the ended pursuits, since those are
 the entries that pay for themselves.
 
 ## Enforcement (hooks)
