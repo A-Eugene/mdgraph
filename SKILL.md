@@ -30,45 +30,101 @@ and do not.
 
 ```
 <repo>/.mdgraph/WORKLOG.md        append-only ledger: what happened, in order
-<repo>/.mdgraph/notes/<slug>.md   one finding / decision / kill per file
-<repo>/.mdgraph/WORKLOG-<year>.md rolled tail, once the log gets long
+<repo>/.mdgraph/WORKLOG-<area>.md one ledger per implementation / sub-project
+<repo>/.mdgraph/notes/<slug>.md   one finding / decision / kill per file — SHARED
+<repo>/.mdgraph/WORKLOG-<year>.md rolled tail, once a log gets long
 ```
+
+**One vault per repo; split the LOG by area, never the notes.** A repo whose
+branches are separate implementations (a UI, a deployment, a research line)
+gives each its own `WORKLOG-<area>.md` so the tail-read stays short and
+relevant, while `notes/` stays common — a finding is a finding regardless of
+which area uncovered it, and both areas must be able to cite the same
+`[[slug]]`. Branches are not the unit of memory; the repo is the vault and the
+area is the file.
 
 The filename under `notes/` is the `[[slug]]` other notes link to, so name it
 for the finding (`upload-queue-contention.md`), not for the date. Nothing stores
 a graph — the edges are inside the notes, and `graph.py` keeps nothing between
 runs.
 
-**Storage — the vault branch (default).** A vault committed on a code branch is
-invisible from every other branch until a merge: entries written on a feature
-branch silently vanish from the reader's view on main. So by default the vault
-does NOT live on a code branch — it lives on its own orphan branch `mdgraph`
-(WORKLOG.md and notes/ at the branch root), mounted at `.mdgraph/` in the
-checkout via `git worktree`, with `.mdgraph/` gitignored by every code branch.
-One shared vault, readable and writable from ANY branch, committed and pushed
-independently of code. Setup, once per repo:
+**Storage — the vault branch (default for a git repo).** A vault committed on a
+code branch is invisible from every other branch until a merge: entries written
+on a feature branch silently vanish from the reader's view on main. So the vault
+does NOT live on a code branch. It lives on its own orphan branch `mdgraph`,
+checked out as a SIBLING worktree, with a `.mdgraph` symlink into each code
+checkout and `.mdgraph` gitignored everywhere. Setup, once per repo:
 
     git switch --orphan mdgraph && git commit --allow-empty -m "vault" && git switch -
-    echo ".mdgraph/" >> .gitignore
-    git worktree add .mdgraph mdgraph
+    printf '.mdgraph\n' >> .gitignore && printf '.mdgraph\n' >> .git/info/exclude
+    git worktree add ../<repo>-mdgraph mdgraph
+    ln -s "$PWD/../<repo>-mdgraph" .mdgraph          # and in every other checkout
 
-(Dirty working tree, or multiple worktree checkouts of the same repo: build the
-branch in a scratch clone and `git push <main-repo-path> mdgraph:mdgraph`
-instead of switching in place; a branch can be mounted in only ONE worktree, so
-secondary checkouts symlink `.mdgraph` to the primary's mount.)
+Put the real worktree BESIDE the repo, not inside it. Inside, one checkout
+becomes privileged — delete it and every other checkout's link dies — and the
+mount sits in an ignored path where `git clean -ffxd` can remove it. Beside, no
+checkout owns it. `.git/info/exclude` is worth setting too: it covers every
+worktree at once, including branches you must not modify.
 
-Commits inside `.mdgraph/` go to the `mdgraph` branch (`git -C .mdgraph add -A
-&& git -C .mdgraph commit`); push it like any branch. After a fresh clone,
-re-run only the `git worktree add` line. Cost of the design: the vault no
-longer snapshots with a code commit — entries are dated, which is the
-compensation. Concurrent appends merge cleanly (append-only tail).
+A branch can be checked out in only ONE worktree, which is why the others are
+symlinks rather than mounts. Commits go `git -C .mdgraph add -A && git -C
+.mdgraph commit`; push it like any branch. After a fresh clone, re-run the
+`worktree add` + `ln -s` lines. Cost of the design: the vault no longer
+snapshots with a code commit — entries are dated, which is the compensation.
+
+**Concurrent sessions** share that one physical vault. Appends coexist (that is
+what append-only buys operationally, not just philosophically); a whole-file
+rewrite clobbers, so never rewrite a WORKLOG to edit it. Two simultaneous
+commits race on `index.lock` — transient, retry, or let the next commit sweep
+up both entries.
+
+**No git? Plain directory.** With no branches there is no visibility problem to
+solve: just create `.mdgraph/` and use it. Say once, at setup, that it is not
+versioned and will not travel — a real limitation, still far better than
+nothing.
 
 **Fallback — in-tree vault:** a repo with a single long-lived branch may simply
-commit `.mdgraph/` on it; that was the old default and existing repos doing it
-keep working. Migrate when a second long-lived branch starts producing findings.
-**Rebinding:** if a repo already keeps its findings elsewhere (a reports tree,
-a docs site), leave them there and record the location in that repo's agent
-instructions — the point is one home per repo, not this one.
+commit `.mdgraph/` on it. Migrate when a second long-lived branch starts
+producing findings. **Rebinding:** if a repo already keeps its findings
+elsewhere (a reports tree, a docs site), leave them there and record the
+location in that repo's agent instructions — the point is one home per repo,
+not this one.
+
+## Adopting a vault in a project that has none
+
+**Do not prompt on arrival.** Most visits are "answer one question and leave",
+and a setup dialog on entry is noise — noise is how a good habit gets switched
+off. Prompt at the FIRST WRITE: the moment rule 4 fires and there is something a
+future session would otherwise repeat. The question then arrives carrying its own
+justification.
+
+Ask once, offering: **branch** (orphan + sibling worktree — the default),
+**in-tree** (single-branch repos), **plain** (not a git repo), or **no**.
+
+Record the answer in `~/.claude/mdgraph-registry.json` so no project is asked
+twice, across sessions:
+
+```json
+{"/abs/path/to/repo": {"mode": "branch", "since": "YYYY-MM-DD"},
+ "/abs/path/to/other": {"mode": "declined", "since": "YYYY-MM-DD"}}
+```
+
+`declined` means never auto-prompt there again; an explicit request from the
+user always overrides. Keep this registry OUTSIDE the skill directory — that
+directory is a copy of an upstream repo, so state written there can be clobbered
+by a re-sync or, worse, committed upstream and publish local paths.
+
+## Reading and writing across areas
+
+- **On entering a repo:** tail-read the log for the area you are working in
+  (`WORKLOG-platform.md` for platform work, `WORKLOG.md` otherwise), ~10 entries.
+- **Before asserting anything about past work:** grep the WHOLE `.mdgraph/` —
+  every log and every note. `grep -rn` spans them; `graph.py` reads all `*.md`
+  under the vault, so edges resolve across files with no configuration.
+- **Writing — one question decides the file: who reads this next?** Only a
+  future session in that area → its own log. The framework, a shared component,
+  or a decision that binds other areas → `WORKLOG.md`. Both → the main log, and
+  link it from the other. Notes are always shared.
 
 `graph.py` takes any directory, so pointing it at a parent sweeps every repo's
 `.mdgraph/` at once (worktree mounts included — they are real directories).
