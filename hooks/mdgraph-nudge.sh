@@ -13,6 +13,7 @@ set -u
 seen=""
 for repo in /root/Projects/*/; do
   d="$repo.mdgraph"
+  [ -e "$d" ] || d="${repo%/}-mdgraph"        # sibling fallback; see mdgraph-index.sh
   [ -e "$d" ] || continue
   real=$(readlink -f "$d" 2>/dev/null) || continue
   [ -d "$real" ] || continue

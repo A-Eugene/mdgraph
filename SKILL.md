@@ -72,6 +72,17 @@ symlinks rather than mounts. Commits go `git -C .mdgraph add -A && git -C
 `worktree add` + `ln -s` lines. Cost of the design: the vault no longer
 snapshots with a code commit — entries are dated, which is the compensation.
 
+**The symlink is discovery, not mechanism.** Writing straight to
+`../<repo>-mdgraph/WORKLOG.md` is the same file, branch and commit. What
+`.mdgraph` buys is that one rule — "a repo with a `.mdgraph/` has a vault" —
+holds for all three storage modes, so every instruction, hook and query works
+unchanged whether the vault is a plain directory, an in-tree folder, or a
+branch worktree. So **look for `.mdgraph/` first and a sibling `<repo>-mdgraph`
+second**: setup is two manual steps, and someone who runs `worktree add` but
+skips `ln -s` would otherwise see no vault at all while its entries sit intact
+on the branch. Missing memory that reads as "there was never any" is worse than
+an error.
+
 **Concurrent sessions** share that one physical vault. Appends coexist (that is
 what append-only buys operationally, not just philosophically); a whole-file
 rewrite clobbers, so never rewrite a WORKLOG to edit it. Two simultaneous

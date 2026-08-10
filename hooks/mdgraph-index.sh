@@ -11,7 +11,11 @@
 set -u
 seen=""
 for repo in /root/Projects/*/; do
+  # `.mdgraph` first; else the sibling <repo>-mdgraph. The symlink is a convenience
+  # for discovery, and a fresh clone that skipped `ln -s` would otherwise hide a vault
+  # that is perfectly intact on its branch — silently, which is the bad kind.
   d="$repo.mdgraph"
+  [ -e "$d" ] || d="${repo%/}-mdgraph"
   [ -e "$d" ] || continue
   real=$(readlink -f "$d" 2>/dev/null) || continue
   [ -d "$real" ] || continue
