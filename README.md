@@ -42,7 +42,7 @@ Three layers, and it matters which is which:
 | layer | what | role |
 |---|---|---|
 | **notes** | `.mdgraph/notes/<slug>.md` | truth — verbatim, append-only, numbers with provenance |
-| **WORKLOG** | `.mdgraph/WORKLOG.md` | router — dated exposition and pointers, read on arrival |
+| **WORKLOG** | `<vault>/WORKLOG.md` | router — dated exposition and pointers, read on arrival |
 | **queries** | `graph.py` output | cache — derived, disposable, never authoritative |
 
 ```
@@ -96,11 +96,13 @@ Then add the trigger to your always-loaded agent instructions — a skill body
 only loads when the skill is invoked, so "read the WORKLOG on arrival" has to
 live somewhere that is read on arrival:
 
-> Any repo containing `.mdgraph/`: read the tail of `.mdgraph/WORKLOG.md` before
+> Any repo with a vault (an `mdgraph` branch worktree, or `.mdgraph/`): read its
+> WORKLOG tail before
 > substantive work; append an entry at task end if a future session would
 > otherwise repeat the work.
 
-In a project, create `.mdgraph/WORKLOG.md` and `.mdgraph/notes/`, then add
+In a project, create the vault (`git worktree add ../<repo>-mdgraph mdgraph`, or a
+plain `.mdgraph/`) with `WORKLOG.md` and `notes/`, then add
 entries as findings land.
 Backfilling existing work is optional — start with the ended pursuits, since those are
 the entries that pay for themselves.

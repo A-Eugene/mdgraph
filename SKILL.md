@@ -2,12 +2,12 @@
 name: mdgraph
 description: >-
   Durable cross-session memory for any repository — an append-only WORKLOG plus
-  linked markdown notes under `.mdgraph/`. Use when recording what was decided,
-  tried, or ended; when asked "did we try this already", "why was that dropped",
-  "what did we conclude"; when starting work in a repo that has a `.mdgraph/`
-  directory; before compacting context; and BEFORE asserting or recommending
-  anything that rests on past work — consult the vault, never reconstruct from
-  memory.
+  linked markdown notes, kept on their own `mdgraph` branch (or in `.mdgraph/`).
+  Use when recording what was decided, tried, or ended; when asked "did we try
+  this already", "why was that dropped", "what did we conclude"; when starting
+  work in a repo that has a vault; before compacting context; and BEFORE
+  asserting or recommending anything that rests on past work — consult the
+  vault, never reconstruct from memory.
 ---
 
 # mdgraph
@@ -28,11 +28,14 @@ and do not.
 
 ## Layout
 
+At the vault root — `../<repo>-mdgraph/` on the `mdgraph` branch by default, or
+`<repo>/.mdgraph/` in the two non-branch modes:
+
 ```
-<repo>/.mdgraph/WORKLOG.md        append-only ledger: what happened, in order
-<repo>/.mdgraph/WORKLOG-<area>.md one ledger per implementation / sub-project
-<repo>/.mdgraph/notes/<slug>.md   one finding / decision / ended pursuit — SHARED
-<repo>/.mdgraph/WORKLOG-<year>.md rolled tail, once a log gets long
+WORKLOG.md            append-only ledger: what happened, in order
+WORKLOG-<area>.md     one ledger per implementation / sub-project
+notes/<slug>.md       one finding / decision / ended pursuit — SHARED
+WORKLOG-<year>.md     rolled tail, once a log gets long
 ```
 
 **One vault per repo; split the LOG by area, never the notes.** A repo whose
@@ -52,36 +55,34 @@ runs.
 code branch is invisible from every other branch until a merge: entries written
 on a feature branch silently vanish from the reader's view on main. So the vault
 does NOT live on a code branch. It lives on its own orphan branch `mdgraph`,
-checked out as a SIBLING worktree, with a `.mdgraph` symlink into each code
-checkout and `.mdgraph` gitignored everywhere. Setup, once per repo:
+checked out as a sibling worktree. Setup, once per repo, two commands:
 
     git switch --orphan mdgraph && git commit --allow-empty -m "vault" && git switch -
-    printf '.mdgraph\n' >> .gitignore && printf '.mdgraph\n' >> .git/info/exclude
     git worktree add ../<repo>-mdgraph mdgraph
-    ln -s "$PWD/../<repo>-mdgraph" .mdgraph          # and in every other checkout
 
-Put the real worktree BESIDE the repo, not inside it. Inside, one checkout
-becomes privileged — delete it and every other checkout's link dies — and the
-mount sits in an ignored path where `git clean -ffxd` can remove it. Beside, no
-checkout owns it. `.git/info/exclude` is worth setting too: it covers every
-worktree at once, including branches you must not modify.
+Put it BESIDE the repo, not inside. Inside, the mount sits in an ignored path
+where `git clean -ffxd` can remove it, and one checkout becomes privileged.
+Beside, no checkout owns it and every worktree reaches it equally.
 
-A branch can be checked out in only ONE worktree, which is why the others are
-symlinks rather than mounts. Commits go `git -C .mdgraph add -A && git -C
-.mdgraph commit`; push it like any branch. After a fresh clone, re-run the
-`worktree add` + `ln -s` lines. Cost of the design: the vault no longer
-snapshots with a code commit — entries are dated, which is the compensation.
+**Finding it: ask git, never guess a path.**
 
-**The symlink is discovery, not mechanism.** Writing straight to
-`../<repo>-mdgraph/WORKLOG.md` is the same file, branch and commit. What
-`.mdgraph` buys is that one rule — "a repo with a `.mdgraph/` has a vault" —
-holds for all three storage modes, so every instruction, hook and query works
-unchanged whether the vault is a plain directory, an in-tree folder, or a
-branch worktree. So **look for `.mdgraph/` first and a sibling `<repo>-mdgraph`
-second**: setup is two manual steps, and someone who runs `worktree add` but
-skips `ln -s` would otherwise see no vault at all while its entries sit intact
-on the branch. Missing memory that reads as "there was never any" is worse than
-an error.
+    git -C <repo> worktree list --porcelain |
+      awk '/^worktree /{w=$2} /^branch refs\/heads\/mdgraph$/{print w; exit}'
+
+This answers correctly from ANY worktree of the repo. A sibling-name rule looks
+equivalent and is not: from a checkout named `foo-news` it resolves
+`foo-news-mdgraph`, finds nothing, and reports no vault while the entries sit in
+`foo-mdgraph`. Memory that reads as "there was never any" is worse than an error.
+
+No symlink and no `.mdgraph` entry in `.gitignore` are needed for this mode —
+the vault is outside the repo, so nothing to ignore and nothing to link.
+Read and write it at the path git reports; commit with `git -C <vault> commit`
+and push it like any branch. After a fresh clone, re-run the `worktree add` line
+alone. Cost of the design: the vault no longer snapshots with a code commit —
+entries are dated, which is the compensation.
+
+`.mdgraph/` remains the location for the two non-branch modes below, so a
+resolver checks it first and falls through to the git query.
 
 **Concurrent sessions** share that one physical vault. Appends coexist (that is
 what append-only buys operationally, not just philosophically); a whole-file
@@ -137,9 +138,10 @@ by a re-sync or, worse, committed upstream and publish local paths.
   or a decision that binds other areas → `WORKLOG.md`. Both → the main log, and
   link it from the other. Notes are always shared.
 
-`graph.py` takes any directory, so pointing it at a parent sweeps every repo's
-`.mdgraph/` at once (worktree mounts included — they are real directories).
-`[[slug]]` resolves by name, not path — links cross repos.
+`graph.py` takes any directory, so pointing it at a parent sweeps every vault at
+once — sibling `<repo>-mdgraph` worktrees and `.mdgraph/` directories alike, since
+both are ordinary directories of markdown. `[[slug]]` resolves by name, not path,
+so links cross repos.
 
 ## The five rules that aren't default
 
