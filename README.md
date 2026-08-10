@@ -1,7 +1,7 @@
 # mdgraph
 
 Cross-session memory for a repository, in plain markdown. An append-only
-WORKLOG plus linked notes under `.mdgraph/`. No model sits between a finding and
+WORKLOG plus linked notes, kept on their own git branch. No model sits between a finding and
 its storage, so nothing is lost in extraction and a write costs nothing.
 
 The conventions themselves live in [`SKILL.md`](SKILL.md) — that file is the
@@ -41,12 +41,12 @@ Three layers, and it matters which is which:
 
 | layer | what | role |
 |---|---|---|
-| **notes** | `.mdgraph/notes/<slug>.md` | truth — verbatim, append-only, numbers with provenance |
+| **notes** | `<vault>/notes/<slug>.md` | truth — verbatim, append-only, numbers with provenance |
 | **WORKLOG** | `<vault>/WORKLOG.md` | router — dated exposition and pointers, read on arrival |
 | **queries** | `graph.py` output | cache — derived, disposable, never authoritative |
 
 ```
-<repo>/.mdgraph/
+<repo>-mdgraph/             the `mdgraph` branch, checked out beside the repo
 ├── WORKLOG.md              the router
 ├── WORKLOG-2026.md         rolled tail, once the log gets long
 └── notes/
