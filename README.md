@@ -101,8 +101,8 @@ live somewhere that is read on arrival:
 > substantive work; append an entry at task end if a future session would
 > otherwise repeat the work.
 
-In a project, create the vault (`git worktree add ../<repo>-mdgraph mdgraph`, or a
-plain `.mdgraph/`) with `WORKLOG.md` and `notes/`, then add
+In a project, ask first, then create the vault — `git worktree add ../<repo>-mdgraph mdgraph`
+for a git repo, a plain `.mdgraph/` otherwise — with `WORKLOG.md` and `notes/`, and add
 entries as findings land.
 Backfilling existing work is optional — start with the ended pursuits, since those are
 the entries that pay for themselves.

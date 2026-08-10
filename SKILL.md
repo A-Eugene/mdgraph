@@ -28,8 +28,8 @@ and do not.
 
 ## Layout
 
-At the vault root — `../<repo>-mdgraph/` on the `mdgraph` branch by default, or
-`<repo>/.mdgraph/` in the two non-branch modes:
+At the vault root — `../<repo>-mdgraph/` on the `mdgraph` branch for a git repo,
+`<repo>/.mdgraph/` when the project is not a git repo:
 
 ```
 WORKLOG.md            append-only ledger: what happened, in order
@@ -51,11 +51,15 @@ for the finding (`upload-queue-contention.md`), not for the date. Nothing stores
 a graph — the edges are inside the notes, and `graph.py` keeps nothing between
 runs.
 
-**Storage — the vault branch (default for a git repo).** A vault committed on a
-code branch is invisible from every other branch until a merge: entries written
-on a feature branch silently vanish from the reader's view on main. So the vault
-does NOT live on a code branch. It lives on its own orphan branch `mdgraph`,
-checked out as a sibling worktree. Setup, once per repo, two commands:
+**Storage follows the project, and is not a preference.** A git repo gets the
+vault branch; anything else gets a plain directory. Nothing to choose — the only
+question put to the user is whether to keep a vault at all.
+
+**Git repo — the `mdgraph` branch.** A vault committed on a code branch is
+invisible from every other branch until a merge: entries written on a feature
+branch silently vanish from the reader's view on main. So the vault does NOT
+live on a code branch. It lives on its own orphan branch `mdgraph`, checked out
+as a sibling worktree. Setup, once per repo, two commands:
 
     git switch --orphan mdgraph && git commit --allow-empty -m "vault" && git switch -
     git worktree add ../<repo>-mdgraph mdgraph
@@ -81,8 +85,19 @@ and push it like any branch. After a fresh clone, re-run the `worktree add` line
 alone. Cost of the design: the vault no longer snapshots with a code commit —
 entries are dated, which is the compensation.
 
-`.mdgraph/` remains the location for the two non-branch modes below, so a
-resolver checks it first and falls through to the git query.
+**Not a git repo — a plain `.mdgraph/` directory.** No branches, so there is no
+visibility problem to solve: create it and use it. Say once, at setup, that it
+is not versioned and will not travel — a real limitation, still far better than
+nothing.
+
+**An in-tree `.mdgraph/` inside a git repo is the pre-2026-08 layout.** Offer to
+migrate it to the branch, so one repo does not carry two conventions. Copy the
+logs and notes onto the branch, then remove the in-tree copy — and make the copy
+and the removal ONE operation. If they are separated, entries written in between
+are dropped and the migrated ledger still looks complete, which is the failure
+that is hard to notice. Verify by diffing against the source's last state:
+`git show <removal-commit>~1:.mdgraph/WORKLOG.md`. The old entries stay in that
+branch's history either way.
 
 **Concurrent sessions** share that one physical vault. Appends coexist (that is
 what append-only buys operationally, not just philosophically); a whole-file
@@ -90,17 +105,9 @@ rewrite clobbers, so never rewrite a WORKLOG to edit it. Two simultaneous
 commits race on `index.lock` — transient, retry, or let the next commit sweep
 up both entries.
 
-**No git? Plain directory.** With no branches there is no visibility problem to
-solve: just create `.mdgraph/` and use it. Say once, at setup, that it is not
-versioned and will not travel — a real limitation, still far better than
-nothing.
-
-**Fallback — in-tree vault:** a repo with a single long-lived branch may simply
-commit `.mdgraph/` on it. Migrate when a second long-lived branch starts
-producing findings. **Rebinding:** if a repo already keeps its findings
-elsewhere (a reports tree, a docs site), leave them there and record the
-location in that repo's agent instructions — the point is one home per repo,
-not this one.
+**Rebinding:** if a repo already keeps its findings elsewhere (a reports tree, a
+docs site), leave them there and record the location in that repo's agent
+instructions — the point is one home per repo, not this one.
 
 ## Adopting a vault in a project that has none
 
@@ -110,8 +117,10 @@ off. Prompt at the FIRST WRITE: the moment rule 4 fires and there is something a
 future session would otherwise repeat. The question then arrives carrying its own
 justification.
 
-Ask once, offering: **branch** (orphan + sibling worktree — the default),
-**in-tree** (single-branch repos), **plain** (not a git repo), or **no**.
+**Always ask; ask only the question that is actually open.** That question is
+whether to keep a vault here at all — yes or no. Which storage it uses is not a
+question: git repo → the branch, otherwise → a plain directory. State which one
+it will be, get the yes, then set it up. Never create a vault unasked.
 
 ## The registry
 
@@ -121,7 +130,8 @@ Ask once, offering: **branch** (orphan + sibling worktree — the default),
 <project-abs-path>	<mode>	<vault-abs-path>	<YYYY-MM-DD>
 ```
 
-`mode` is `branch` | `in-tree` | `plain` | `declined`. It does two jobs:
+`mode` is `branch` | `plain` | `declined` (`in-tree` appears in older rows and is
+still read). It does two jobs:
 
 - **Answers "was this project asked?"** — a line means yes, so nothing is
   re-prompted across sessions. `declined` means never auto-prompt again; an
