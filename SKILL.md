@@ -113,23 +113,36 @@ justification.
 Ask once, offering: **branch** (orphan + sibling worktree — the default),
 **in-tree** (single-branch repos), **plain** (not a git repo), or **no**.
 
-Record the answer in `~/.claude/mdgraph-registry.json` so no project is asked
-twice, across sessions:
+## The registry
 
-```json
-{"/abs/path/to/repo": {"mode": "branch", "since": "YYYY-MM-DD"},
- "/abs/path/to/other": {"mode": "declined", "since": "YYYY-MM-DD"}}
+`~/.claude/mdgraph-registry.txt`, tab-separated, one line per project:
+
+```
+<project-abs-path>	<mode>	<vault-abs-path>	<YYYY-MM-DD>
 ```
 
-`declined` means never auto-prompt there again; an explicit request from the
-user always overrides. Keep this registry OUTSIDE the skill directory — that
-directory is a copy of an upstream repo, so state written there can be clobbered
-by a re-sync or, worse, committed upstream and publish local paths.
+`mode` is `branch` | `in-tree` | `plain` | `declined`. It does two jobs:
+
+- **Answers "was this project asked?"** — a line means yes, so nothing is
+  re-prompted across sessions. `declined` means never auto-prompt again; an
+  explicit request from the user always overrides.
+- **Answers "where is the vault?"** — fill the third column when the path is
+  unconventional, or leave it EMPTY to fall through to `.mdgraph/` and then the
+  git query. This is the only way to express a vault that neither convention
+  finds: a hand-named worktree, a vault outside the project tree, one shared by
+  several repos.
+
+Plain text rather than JSON, for the same reason the vault is markdown: greppable,
+appendable with `>>`, editable by hand, diffable. Keep it OUTSIDE the skill
+directory — that directory is a copy of an upstream repo, so state written there
+can be clobbered by a re-sync or committed upstream and publish local paths.
 
 ## Reading and writing across areas
 
-- **On entering a repo:** tail-read the log for the area you are working in
-  (`WORKLOG-platform.md` for platform work, `WORKLOG.md` otherwise), ~10 entries.
+- **On entering a repo:** resolve the vault (registry -> `.mdgraph/` -> git query;
+  `hooks/mdgraph-vault.sh` is that resolver), then tail-read the log for the area you
+  are working in (`WORKLOG-<area>.md` where one exists, `WORKLOG.md` otherwise),
+  ~10 entries. No vault and no registry line: the project has never been asked.
 - **Before asserting anything about past work:** grep the WHOLE `.mdgraph/` —
   every log and every note. `grep -rn` spans them; `graph.py` reads all `*.md`
   under the vault, so edges resolve across files with no configuration.
