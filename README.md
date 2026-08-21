@@ -110,18 +110,31 @@ the entries that pay for themselves.
 ## Enforcement (hooks)
 
 The skill text binds only when loaded, and it loads at write time — so the read-side
-discipline (rule 0) gets a mechanical layer. Two hooks under `hooks/`, registered in
-`~/.claude/settings.json` (2026-08-07):
+discipline (rule 0) gets a mechanical layer. Three scripts under `hooks/`. Copy them out, then register two of them in
+`~/.claude/settings.json`:
+
+```bash
+mkdir -p ~/.claude/hooks && cp hooks/*.sh ~/.claude/hooks/
+```
 
 ```json
 "hooks": {
-  "SessionStart": [{"hooks": [{"type": "command", "command": "/root/.claude/hooks/mdgraph-index.sh"}]}],
-  "Stop":         [{"hooks": [{"type": "command", "command": "/root/.claude/hooks/mdgraph-nudge.sh"}]}]
+  "SessionStart": [{"hooks": [{"type": "command", "command": "$HOME/.claude/hooks/mdgraph-index.sh"}]}],
+  "Stop":         [{"hooks": [{"type": "command", "command": "$HOME/.claude/hooks/mdgraph-nudge.sh"}]}]
 }
 ```
 
-- `mdgraph-index.sh` (SessionStart) — injects every vault's WORKLOG heading index plus
-  the full `Kills:` list as ambient context (~1k tokens). Read-side: facts that are in
+`mdgraph-vault.sh` is not registered. The other two call it to resolve a vault, so it
+must sit beside them.
+
+Both scripts scan `/root/Projects/*/`. Change that glob to wherever your repos live —
+it is the one path in this project that is not portable, and it is the first thing to
+edit after copying.
+
+- `mdgraph-index.sh` (SessionStart) — injects each vault's newest 45 WORKLOG headings,
+  every `#constraint` line regardless of age, and the full `Kills:` list (~1–2k tokens).
+  The constraint pass exists because a tail window ages out preconditions at the same
+  rate as events, which is exactly backwards. Read-side: facts that are in
   context do not get fabricated around; out-of-context ones do — both 2026-08-07
   incidents were out-of-context assertions.
 - `mdgraph-nudge.sh` (Stop) — warns when code commits have outpaced the WORKLOG.

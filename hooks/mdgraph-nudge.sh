@@ -23,7 +23,10 @@ for repo in /root/Projects/*/; do
   vt=$(git -C "$real" log -1 --format=%ct -- . 2>/dev/null)
   [ -n "$vt" ] || continue
 
-  n=$(git -C "$repo" log --oneline --since="@$vt" -- src/ trading_framework/ 2>/dev/null | wc -l)
+  # No pathspec: which directories hold code differs per project, and a hardcoded list
+  # silently reports zero for every repo that does not use those names. Vault commits
+  # land on the vault's own branch, so anything in the code repo is code movement.
+  n=$(git -C "$repo" log --oneline --since="@$vt" 2>/dev/null | wc -l)
   if [ "${n:-0}" -gt 0 ]; then
     echo "mdgraph: $(basename "$repo") has $n commit(s) touching code since the last vault entry. Append one if a future session would otherwise repeat the work."
   fi

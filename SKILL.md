@@ -5,9 +5,12 @@ description: >-
   linked markdown notes, kept on their own `mdgraph` branch (or in `.mdgraph/`).
   Use when recording what was decided, tried, or ended; when asked "did we try
   this already", "why was that dropped", "what did we conclude"; when starting
-  work in a repo that has a vault; before compacting context; and BEFORE
-  asserting or recommending anything that rests on past work — consult the
-  vault, never reconstruct from memory.
+  work in a repo that has a vault; before compacting context; BEFORE
+  asserting or recommending anything that rests on past work; and before you
+  propose, price, compare, shortlist, or recommend an option of any kind — a
+  firm, a vendor, a broker, a venue, a library, a data source — even when the
+  work feels new and nobody has mentioned the past. Undertriggering is the known
+  failure mode here, so when in doubt, consult the vault.
 ---
 
 # mdgraph
@@ -117,6 +120,13 @@ off. Prompt at the FIRST WRITE: the moment rule 4 fires and there is something a
 future session would otherwise repeat. The question then arrives carrying its own
 justification.
 
+**Never create a vault inside a vault.** Before setting one up, check that you are
+not already in one: a `WORKLOG.md` at the directory root, or a vault directory at or
+above the current path. `hooks/mdgraph-vault.sh` answers this. Getting it wrong fails
+quietly — the nested vault indexes under its own name, reads as a separate project,
+and the corpus splits in two without any error. (Observed 2026-08-14: a nested vault
+reached 18 entries before anyone noticed it was not the real one.)
+
 **Always ask; ask only the question that is actually open.** That question is
 whether to keep a vault here at all — yes or no. Which storage it uses is not a
 question: git repo → the branch, otherwise → a plain directory. State which one
@@ -210,6 +220,33 @@ Append-only governs corrections. It is not a ban on housekeeping.
 - **Genuinely junk** — a mis-fired entry, a duplicate, a note about work that
   never happened → delete it. Not everything written down is a finding.
 
+## Standing constraints
+
+Most entries are events: something happened, on a date. A few are **preconditions** —
+facts that bind every later decision and never expire. Where the operator lives. A
+latency budget. A licence term. A hardware limit.
+
+A dated log ages a precondition at the same rate as everything else, and that is
+backwards. The log is read newest-first, and a precondition is most needed long after
+it was written, by someone who does not know to look for it.
+
+Tag those lines `#constraint`. The SessionStart hook prints every tagged line in full
+and ignores the tail window, so the fact stays in context however long the log grows.
+
+```markdown
+- #constraint The operator is resident in Indonesia. Check any prop firm against that
+  firm's own restricted-country page before you propose, price, or survey it. Per-firm
+  results are in the cited entries. Do not restate a firm's status from memory.
+- Cites: [[eval-convexity-firm-survey]]
+```
+
+State the rule and cite the entries. Do not copy the per-firm results up here — that
+duplicates a fact that later entries may correct, and the copy will not be corrected
+with them.
+
+Keep the set small. Every tagged line is in every session forever. The test: would a
+session that did not know this produce work you have to throw away?
+
 ## Edge syntax
 
 Each on its own line. This is what `graph.py` parses, so the form is exact:
@@ -250,6 +287,21 @@ sentences — the reader infers:
   shell. Cost two silent failures before it was diagnosed.
 - **Pointer:** .mdgraph/notes/minimal-environment-traps.md
 ```
+
+**Something that corrects an earlier entry** — the shape rule 1 asks for. The old
+entry is never edited; it gets a banner and stays:
+
+```markdown
+## 2026-03-22 — upload-retry, corrected
+- The 11s p99 in [[retry-backoff]] was a measurement artifact. The load generator
+  shared the lock it was measuring. Re-run with a separate generator: p99 4.2s → 4.4s,
+  no regression. The backoff change was reverted for a reason that did not hold.
+- Supersedes: [[retry-backoff]]
+- **Pointer:** .mdgraph/notes/upload-queue-contention.md
+```
+
+Then one italic line at the top of the superseded note, and nothing else changes:
+*Superseded by [[upload-retry-corrected]] (2026-03-22).*
 
 **Keep an entry short.** A few lines carrying the numbers, the mechanism, and
 the decision event — the detail belongs in the pointed note, not the log. The
