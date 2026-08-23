@@ -1,16 +1,17 @@
 ---
 name: mdgraph
 description: >-
-  Durable cross-session memory for any repository — an append-only WORKLOG plus
-  linked markdown notes, kept on their own `mdgraph` branch (or in `.mdgraph/`).
-  Use when recording what was decided, tried, or ended; when asked "did we try
-  this already", "why was that dropped", "what did we conclude"; when starting
-  work in a repo that has a vault; before compacting context; BEFORE
-  asserting or recommending anything that rests on past work; and before you
-  propose, price, compare, shortlist, or recommend an option of any kind — a
-  firm, a vendor, a broker, a venue, a library, a data source — even when the
-  work feels new and nobody has mentioned the past. Undertriggering is the known
-  failure mode here, so when in doubt, consult the vault.
+  How to WRITE a repository's long-term memory: the entry format for an
+  append-only WORKLOG and its linked notes, the `Kills:` and `Supersedes:`
+  edges, the `#constraint` tag for facts that must never age out of context,
+  and which log an entry belongs in. Use it whenever something is about to be
+  written down for a future session — a run that finished and its numbers, an
+  idea being dropped for good, a constraint learned the hard way, a correction
+  to an earlier entry, or a last note before compacting context. Use it before
+  proposing, pricing, or shortlisting any option — a firm, a vendor, a library,
+  a venue — since a recorded constraint may already rule a candidate out. Use
+  it when setting up memory in a repo that has none. Reading an existing vault
+  needs no skill: grep it.
 ---
 
 # mdgraph
