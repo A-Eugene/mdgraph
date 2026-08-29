@@ -43,7 +43,10 @@ for repo in /root/Projects/*/; do
     echo "--- standing constraints (always shown; the tail above cannot hide these) ---"
     printf '%s\n' "$cons"
   fi
-  echo "--- pursuits recorded as ended; the result and mechanism are in the entries ---"
-  grep -oh "Kills: \[\[[a-z0-9_-]*\]\]" "${logs[@]}" 2>/dev/null | sort -u | sed 's/Kills: //'
+  # No ended-pursuit list. A "Kills:" edge was written by whichever session read the
+  # number, so injecting it every session broadcast that session's judgment as settled
+  # fact. Measured 2026-08-30: of 121 such edges, 16 cited a bar declared before the
+  # test and 8 an operator decision; ~100 were the model's own call. Headings carry
+  # what was tried and what came back, which is the same information without the verdict.
 done
 exit 0

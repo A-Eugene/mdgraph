@@ -30,8 +30,18 @@ through a model, and history is git.
   harmlessly, and an in-place rewrite silently drops concurrent writes.
 - **`#constraint`** marks a standing precondition (a residency rule, a latency
   budget) that must never scroll out of context.
-- **`Kills: [[idea-name]]`** on an entry records that a pursuit ended there,
-  so the idea is not re-attempted cold.
+- **Nothing is marked closed.** There used to be a `Kills:` edge and an
+  injected list of ended pursuits. It was removed once the vault was measured:
+  of 121 such edges, 16 cited a bar declared before the test ran and 8 an
+  operator decision — the other ~100 were a model reading a number and
+  deciding that was enough. A judgment made and recorded by the same session,
+  in the grammar of a fact, is the most durable kind of verdict, and it was
+  being injected into every session as settled. A heading that says what was
+  tried and what came back carries the same information and lets the reader
+  disagree.
+- **Everything is dated in the text** — `## YYYY-MM-DD` on entries, a `Date:`
+  line in notes, and a fresh date on every later addition. Mtimes do not
+  survive a clone and git dates describe the commit, not the finding.
 
 ## Enforcement (hooks)
 
@@ -49,8 +59,8 @@ mkdir -p ~/.claude/hooks && cp hooks/*.sh ~/.claude/hooks/
 }
 ```
 
-- `mdgraph-index.sh` (SessionStart) — injects each vault's recent headings,
-  every `#constraint` line in full regardless of age, and the `Kills:` list.
+- `mdgraph-index.sh` (SessionStart) — injects each vault's recent headings and
+  every `#constraint` line in full regardless of age.
 - `mdgraph-nudge.sh` (Stop) — warns when code commits have outpaced the vault.
 - `mdgraph-vault.sh` — the resolver both call; not registered itself.
 

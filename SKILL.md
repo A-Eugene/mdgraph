@@ -22,8 +22,15 @@ storage, so nothing is lost in extraction and a write costs nothing.
 enough mechanism and number that a future reader can infer the conclusion —
 never write the conclusion as a judgment. "p99 went 4.2s → 11s: retries stacked
 behind the same lock" carries everything; "DEAD — do not re-attempt" is an
-opinion and does not belong. Decisions that happened are facts and do belong:
-"pursuit stopped on this result", "adopted on 03-14".
+opinion and does not belong.
+
+A decision belongs only when you can say **who or what made it**. "The
+pre-registered futility gate tripped", "the operator hit the country wall at
+signup", "adopted on 03-14" — those are facts about the world. "Pursuit stopped
+on this result", written by the same session that read the result, is not a
+report of a decision; it is a judgment being made and cited as its own source.
+Record the number and the mechanism, name the authority if there was one, and
+leave the conclusion to the reader.
 
 ## Storage
 
@@ -74,9 +81,9 @@ path only when the conventions above would not find it.
    before acting on it.
 3. **Write when a future session would otherwise repeat the work.** A result
    and its numbers, a dead end, a constraint found the hard way — yes.
-   Progress narration ("refactored the parser") — no. An ended pursuit is the
-   highest-value entry: add `Kills: [[idea-name]]` on its own line, and the
-   session index will list it so the idea is not re-attempted cold.
+   Progress narration ("refactored the parser") — no. Nothing is ever marked
+   closed: a heading that states what was tried and what came back is what
+   stops the work being repeated, and it leaves the reader free to disagree.
 4. **Standing constraints get `#constraint`.** Most entries are events and may
    age out of the injected index; a precondition must not. Start a bullet with
    `#constraint` and the SessionStart hook prints it in full forever. Keep the
@@ -84,13 +91,20 @@ path only when the conventions above would not find it.
    the entries, and never copy result details up into the tag where later
    corrections cannot reach them.
 
+5. **Date everything, in the text.** A WORKLOG heading is
+   `## YYYY-MM-DD — what happened`. A note opens with a `Date: YYYY-MM-DD`
+   line under its title, and every later addition to that note carries its own
+   date. File mtimes do not survive a clone and git dates describe the commit,
+   not the finding — so the date has to be in the prose or it is gone. Without
+   it a reader cannot tell a result from last week from one from last year,
+   and staleness becomes invisible.
+
 ## Entry shapes
 
 ```markdown
 ## 2026-03-14 — retry-backoff
 - Tried exponential backoff on the upload queue to cut 429s → p99 4.2s → 11s:
   retries stacked behind the same lock. Pursuit stopped on this result.
-- Kills: [[exponential-backoff-upload]]
 - **Pointer:** notes/upload-queue-contention.md
 
 ## 2026-03-19 — systemd-path
@@ -102,6 +116,19 @@ path only when the conventions above would not find it.
 - The 11s p99 above was a measurement artifact: the load generator shared the
   lock it measured. Separate generator: p99 4.2s → 4.4s, no regression.
 - **Pointer:** notes/upload-queue-contention.md
+```
+
+A note under `notes/`:
+
+```markdown
+# Upload queue contention
+
+Date: 2026-03-14
+
+The upload path serialises on one lock ... (what was found, with numbers)
+
+Date: 2026-03-22 — the 11s figure above came from a generator sharing the lock.
+Re-measured at 4.4s.
 ```
 
 ## Housekeeping
@@ -118,5 +145,6 @@ path only when the conventions above would not find it.
 ## Reading
 
 No tooling. `grep -rn <term> <vault>` answers "did we try this"; the
-SessionStart hook already injects each vault's recent headings, every
-`#constraint` line, and the list of `Kills:` targets into every session.
+SessionStart hook already injects each vault's recent headings and every
+`#constraint` line into every session. Headings are the index — which is why a
+heading should say what was tried and what came back, not just name a topic.
