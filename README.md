@@ -1,117 +1,42 @@
 # mdgraph
 
 Cross-session memory for a repository, in plain markdown. An append-only
-WORKLOG plus linked notes, kept on their own git branch. No model sits between a finding and
-its storage, so nothing is lost in extraction and a write costs nothing.
-
-The conventions themselves live in [`SKILL.md`](SKILL.md) — that file is the
-contract, and this one is why it looks the way it does.
-
-![architecture](architecture.svg)
+WORKLOG that routes to evidence, kept on a dedicated `mdgraph` branch (or in
+`.mdgraph/` when the project is not a git repo). The conventions live in
+[`SKILL.md`](SKILL.md) — that file is the contract, this one is why it looks
+the way it does.
 
 ## Why not an extraction engine
 
 LLM memory engines (cognee, mem0, and kin) read your text, extract entities and
-relations, and store the extraction. Three consequences, all measured or
-structural rather than hypothetical:
-
-- **Writes amplify.** Extraction *expands* — entities, relations, and summaries
-  per chunk. On my own corpus that ran ~26× tokens out per token stored.
-- **The payload is what survives, and it isn't your text.** A finding like
-  "NFP on crypto perps netted 1–6 bps at tick level, t=0.1–0.6, so the pursuit
-  stopped and the family stayed ZN-only" becomes triples that keep the nouns and
-  drop the number, the threshold, and the mechanism.
-- **Merging destroys history.** Once a node is updated, what it used to say is
-  gone — so you cannot rebuild the log from the graph.
-
-mdgraph inverts each: the author draws the node boundaries, the payload never
-passes through a model, and the graph is written in the text.
+relations, and store the extraction. Writes amplify (~26× tokens out per token
+stored on my corpus), the payload that survives is not your text (the number
+and the mechanism are what triples drop), and merged nodes destroy history.
+mdgraph inverts all three: you draw the boundaries, the payload never passes
+through a model, and history is git.
 
 ## The shape
 
-```
-log → view   cheap, lossless, repeatable
-view → log   impossible
-```
-
-So the append-only text is the source of truth and every index is a cache.
-`graph.py` holds to that literally — it re-parses on each run and stores nothing.
-
-Three layers, and it matters which is which:
-
-| layer | what | role |
-|---|---|---|
-| **notes** | `<vault>/notes/<slug>.md` | truth — verbatim, append-only, numbers with provenance |
-| **WORKLOG** | `<vault>/WORKLOG.md` | router — dated exposition and pointers, read on arrival |
-| **queries** | `graph.py` output | cache — derived, disposable, never authoritative |
-
-```
-<repo>-mdgraph/             the `mdgraph` branch, checked out beside the repo
-├── WORKLOG.md              the router
-├── WORKLOG-2026.md         rolled tail, once the log gets long
-└── notes/
-    ├── upload-queue-contention.md
-    ├── pool-sizing.md          (superseded, banner on top, kept)
-    └── pool-sizing-revised.md
-```
-
-The filename under `notes/` is the `[[slug]]` other notes link to — name it for
-the finding, not the date. There is no `graphs/` directory because no graph is
-ever stored: the edges live in the notes, and `graph.py` keeps nothing between
-runs.
-
-The router/truth split is the load-bearing one. Memory's job is not to hand you
-the answer; it is to tell you where to look and whether looking is worth it. A
-number in the log is a dated hint — the note it points at is what you act on.
-That is also what keeps the two from drifting: only one of them is ever right by
-construction.
-
-## Why markdown and not a database
-
-Markdown *is* the database: git-versioned, greppable, diffable, human-auditable,
-and readable by an agent with no tool layer between. SQL is the right query
-engine and the wrong source of truth — a store you author *into* becomes opaque
-to `git diff` and to anyone reading it raw, which is the failure this replaces
-with the LLM merely removed. If a vault outgrows a whole-directory rescan, emit
-SQLite *derived* from the markdown: gitignored, rebuildable, never authoritative.
-
-## Scope
-
-Good at: durable findings, pursuits that ended and the mechanism that ended them,
-decisions whose rationale outlives the session that made them.
-
-Not this: an episodic record of everything that happened (your agent transcripts
-already are that), nor a substitute for a project's existing docs. If a repo
-already keeps findings somewhere, leave them there — one home per repo, not
-necessarily this one.
-
-## Install
-
-```bash
-mkdir -p ~/.claude/skills/mdgraph
-cp SKILL.md graph.py ~/.claude/skills/mdgraph/
-```
-
-Then add the trigger to your always-loaded agent instructions — a skill body
-only loads when the skill is invoked, so "read the WORKLOG on arrival" has to
-live somewhere that is read on arrival:
-
-> Any repo with a vault (an `mdgraph` branch worktree, or `.mdgraph/`): read its
-> WORKLOG tail before
-> substantive work; append an entry at task end if a future session would
-> otherwise repeat the work.
-
-In a project, ask first, then create the vault — `git worktree add ../<repo>-mdgraph mdgraph`
-for a git repo, a plain `.mdgraph/` otherwise — with `WORKLOG.md` and `notes/`, and add
-entries as findings land.
-Backfilling existing work is optional — start with the ended pursuits, since those are
-the entries that pay for themselves.
+- **WORKLOG.md** — an append-only ledger of what happened, newest last. Each
+  entry ends with a `**Pointer:**` line naming where the evidence lives: a
+  notebook, a repo file, a note, or "this entry" when the entry is all there
+  is. The ledger is a router, not the archive.
+- **No verdicts.** Entries carry numbers and mechanism so a reader can infer
+  the conclusion; they never issue one. "Pursuit stopped on this result" is a
+  fact and belongs. "DEAD — do not re-attempt" is an opinion and does not.
+- **Corrections are new entries.** Nothing is rewritten; a later entry states
+  what was wrong and the corrected number. Append-only is an operational rule,
+  not a philosophy: several sessions share the file, appends interleave
+  harmlessly, and an in-place rewrite silently drops concurrent writes.
+- **`#constraint`** marks a standing precondition (a residency rule, a latency
+  budget) that must never scroll out of context.
+- **`Kills: [[idea-name]]`** on an entry records that a pursuit ended there,
+  so the idea is not re-attempted cold.
 
 ## Enforcement (hooks)
 
-The skill text binds only when loaded, and it loads at write time — so the read-side
-discipline (rule 0) gets a mechanical layer. Three scripts under `hooks/`. Copy them out, then register two of them in
-`~/.claude/settings.json`:
+The contract binds only when loaded, so the read side is mechanical. Three
+scripts under `hooks/`; copy them out and register two:
 
 ```bash
 mkdir -p ~/.claude/hooks && cp hooks/*.sh ~/.claude/hooks/
@@ -124,22 +49,27 @@ mkdir -p ~/.claude/hooks && cp hooks/*.sh ~/.claude/hooks/
 }
 ```
 
-`mdgraph-vault.sh` is not registered. The other two call it to resolve a vault, so it
-must sit beside them.
+- `mdgraph-index.sh` (SessionStart) — injects each vault's recent headings,
+  every `#constraint` line in full regardless of age, and the `Kills:` list.
+- `mdgraph-nudge.sh` (Stop) — warns when code commits have outpaced the vault.
+- `mdgraph-vault.sh` — the resolver both call; not registered itself.
 
-Both scripts scan `/root/Projects/*/`. Change that glob to wherever your repos live —
-it is the one path in this project that is not portable, and it is the first thing to
-edit after copying.
+Both scan `/root/Projects/*/`; change that glob to wherever your repos live.
 
-- `mdgraph-index.sh` (SessionStart) — injects each vault's newest 45 WORKLOG headings,
-  every `#constraint` line regardless of age, and the full `Kills:` list (~1–2k tokens).
-  The constraint pass exists because a tail window ages out preconditions at the same
-  rate as events, which is exactly backwards. Read-side: facts that are in
-  context do not get fabricated around; out-of-context ones do — both 2026-08-07
-  incidents were out-of-context assertions.
-- `mdgraph-nudge.sh` (Stop) — warns when code commits have outpaced the WORKLOG.
-  Write-side: existed since the format transition, sat unregistered until 2026-08-07.
+## Reading
 
-Deployment: this repo is the source; `~/.claude/skills/mdgraph/` and
-`~/.claude/hooks/` are copies. Edit here, commit, then copy out — never edit the
-global copies directly.
+No tooling and no query layer: `grep -rn <term> <vault>`. There used to be a
+`graph.py` here; it was deleted once measurement showed its useful output was
+a subset of what the SessionStart hook already injects, and its graph commands
+walked a graph that was 90% dangling links.
+
+## Install
+
+```bash
+mkdir -p ~/.claude/skills/mdgraph
+cp SKILL.md ~/.claude/skills/mdgraph/
+```
+
+Then register the hooks as above, and add one line to your always-loaded agent
+instructions telling sessions the vault convention exists — a skill body only
+loads when invoked.

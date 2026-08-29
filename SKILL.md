@@ -1,329 +1,122 @@
 ---
 name: mdgraph
 description: >-
-  How to WRITE a repository's long-term memory: the entry format for an
-  append-only WORKLOG and its linked notes, the `Kills:` and `Supersedes:`
-  edges, the `#constraint` tag for facts that must never age out of context,
-  and which log an entry belongs in. Use it whenever something is about to be
-  written down for a future session — a run that finished and its numbers, an
-  idea being dropped for good, a constraint learned the hard way, a correction
-  to an earlier entry, or a last note before compacting context. Use it before
-  proposing, pricing, or shortlisting any option — a firm, a vendor, a library,
-  a venue — since a recorded constraint may already rule a candidate out. Use
-  it when setting up memory in a repo that has none. Reading an existing vault
-  needs no skill: grep it.
+  How to WRITE a repository's long-term memory: an append-only WORKLOG that
+  routes to evidence, plus the `#constraint` tag for facts that must never age
+  out of context. Use it whenever something is about to be written down for a
+  future session — a run that finished and its numbers, a pursuit that ended,
+  a constraint learned the hard way, a correction to an earlier entry, or a
+  last note before compacting context. Use it before proposing, pricing, or
+  shortlisting any option — a firm, a vendor, a library, a venue — since a
+  recorded constraint may already rule a candidate out. Use it when setting up
+  memory in a repo that has none. Reading an existing vault needs no skill:
+  grep it.
 ---
 
 # mdgraph
 
-Notes are markdown you write; edges are links you type. No model sits between a
-finding and its storage, so nothing is lost in extraction and a write costs
-nothing.
+Plain markdown you write yourself. No model sits between a finding and its
+storage, so nothing is lost in extraction and a write costs nothing.
 
-**Entries are exposition, not opinion.** Record what happened with enough
-mechanism and number that a future reader can infer the conclusion themselves —
-never write the conclusion as a judgment. "p99 went 4.2s → 11s" alone is a log
-line; add the mechanism — "retries stacked behind the same lock" — and the entry
-now carries everything needed to infer what to do, without telling anyone what
-to think. Decisions that actually happened are facts and belong ("pursuit
-stopped after this result", "the operator hit the country wall at signup");
-verdicts and directives ("DEAD — do not re-attempt", "deploy it") are opinions
-and do not.
+**Entries are informative, never argumentative.** Record what happened with
+enough mechanism and number that a future reader can infer the conclusion —
+never write the conclusion as a judgment. "p99 went 4.2s → 11s: retries stacked
+behind the same lock" carries everything; "DEAD — do not re-attempt" is an
+opinion and does not belong. Decisions that happened are facts and do belong:
+"pursuit stopped on this result", "adopted on 03-14".
 
-## Layout
+## Storage
 
-At the vault root — `../<repo>-mdgraph/` on the `mdgraph` branch for a git repo,
-`<repo>/.mdgraph/` when the project is not a git repo:
-
-```
-WORKLOG.md            append-only ledger: what happened, in order
-WORKLOG-<area>.md     one ledger per implementation / sub-project
-notes/<slug>.md       one finding / decision / ended pursuit — SHARED
-WORKLOG-<year>.md     rolled tail, once a log gets long
-```
-
-**One vault per repo; split the LOG by area, never the notes.** A repo whose
-branches are separate implementations (a UI, a deployment, a research line)
-gives each its own `WORKLOG-<area>.md` so the tail-read stays short and
-relevant, while `notes/` stays common — a finding is a finding regardless of
-which area uncovered it, and both areas must be able to cite the same
-`[[slug]]`. Branches are not the unit of memory; the repo is the vault and the
-area is the file.
-
-The filename under `notes/` is the `[[slug]]` other notes link to, so name it
-for the finding (`upload-queue-contention.md`), not for the date. Nothing stores
-a graph — the edges are inside the notes, and `graph.py` keeps nothing between
-runs.
-
-**Storage follows the project, and is not a preference.** A git repo gets the
-vault branch; anything else gets a plain directory. Nothing to choose — the only
-question put to the user is whether to keep a vault at all.
-
-**Git repo — the `mdgraph` branch.** A vault committed on a code branch is
-invisible from every other branch until a merge: entries written on a feature
-branch silently vanish from the reader's view on main. So the vault does NOT
-live on a code branch. It lives on its own orphan branch `mdgraph`, checked out
-as a sibling worktree. Setup, once per repo, two commands:
+A git repo gets a dedicated orphan branch `mdgraph`, checked out as a sibling
+worktree. Anything else gets a plain `<repo>/.mdgraph/` directory. Not a
+preference — the only question ever put to the user is whether to keep a vault
+at all, and it is asked at the first write, never on arrival.
 
     git switch --orphan mdgraph && git commit --allow-empty -m "vault" && git switch -
     git worktree add ../<repo>-mdgraph mdgraph
 
-Put it BESIDE the repo, not inside. Inside, the mount sits in an ignored path
-where `git clean -ffxd` can remove it, and one checkout becomes privileged.
-Beside, no checkout owns it and every worktree reaches it equally.
-
-**Finding it: ask git, never guess a path.**
+Beside the repo, not inside — inside, `git clean -ffxd` can remove it. Find it
+by asking git, never by guessing a name:
 
     git -C <repo> worktree list --porcelain |
       awk '/^worktree /{w=$2} /^branch refs\/heads\/mdgraph$/{print w; exit}'
 
-This answers correctly from ANY worktree of the repo. A sibling-name rule looks
-equivalent and is not: from a checkout named `foo-news` it resolves
-`foo-news-mdgraph`, finds nothing, and reports no vault while the entries sit in
-`foo-mdgraph`. Memory that reads as "there was never any" is worse than an error.
+Commit with `git -C <vault> commit`, push like any branch. **Never create a
+vault inside a vault** — if a `WORKLOG.md` already exists at or above you, that
+is the vault (a nested one once grew 18 entries before anyone noticed).
 
-No symlink and no `.mdgraph` entry in `.gitignore` are needed for this mode —
-the vault is outside the repo, so nothing to ignore and nothing to link.
-Read and write it at the path git reports; commit with `git -C <vault> commit`
-and push it like any branch. After a fresh clone, re-run the `worktree add` line
-alone. Cost of the design: the vault no longer snapshots with a code commit —
-entries are dated, which is the compensation.
+The layout inside:
 
-**Not a git repo — a plain `.mdgraph/` directory.** No branches, so there is no
-visibility problem to solve: create it and use it. Say once, at setup, that it
-is not versioned and will not travel — a real limitation, still far better than
-nothing.
-
-**An in-tree `.mdgraph/` inside a git repo is the pre-2026-08 layout.** Offer to
-migrate it to the branch, so one repo does not carry two conventions. Copy the
-logs and notes onto the branch, then remove the in-tree copy — and make the copy
-and the removal ONE operation. If they are separated, entries written in between
-are dropped and the migrated ledger still looks complete, which is the failure
-that is hard to notice. Verify by diffing against the source's last state:
-`git show <removal-commit>~1:.mdgraph/WORKLOG.md`. The old entries stay in that
-branch's history either way.
-
-**Concurrent sessions** share that one physical vault. Appends coexist (that is
-what append-only buys operationally, not just philosophically); a whole-file
-rewrite clobbers, so never rewrite a WORKLOG to edit it. Two simultaneous
-commits race on `index.lock` — transient, retry, or let the next commit sweep
-up both entries.
-
-**Rebinding:** if a repo already keeps its findings elsewhere (a reports tree, a
-docs site), leave them there and record the location in that repo's agent
-instructions — the point is one home per repo, not this one.
-
-## Adopting a vault in a project that has none
-
-**Do not prompt on arrival.** Most visits are "answer one question and leave",
-and a setup dialog on entry is noise — noise is how a good habit gets switched
-off. Prompt at the FIRST WRITE: the moment rule 4 fires and there is something a
-future session would otherwise repeat. The question then arrives carrying its own
-justification.
-
-**Never create a vault inside a vault.** Before setting one up, check that you are
-not already in one: a `WORKLOG.md` at the directory root, or a vault directory at or
-above the current path. `hooks/mdgraph-vault.sh` answers this. Getting it wrong fails
-quietly — the nested vault indexes under its own name, reads as a separate project,
-and the corpus splits in two without any error. (Observed 2026-08-14: a nested vault
-reached 18 entries before anyone noticed it was not the real one.)
-
-**Always ask; ask only the question that is actually open.** That question is
-whether to keep a vault here at all — yes or no. Which storage it uses is not a
-question: git repo → the branch, otherwise → a plain directory. State which one
-it will be, get the yes, then set it up. Never create a vault unasked.
+    WORKLOG.md          append-only ledger: what happened, in order
+    WORKLOG-<area>.md   optional per-area ledger, so tail-reads stay short
+    notes/<slug>.md     optional longer write-ups; link them as [[slug]]
 
 ## The registry
 
-`~/.claude/mdgraph-registry.txt`, tab-separated, one line per project:
+`~/.claude/mdgraph-registry.txt`, tab-separated:
+`<project-abs-path> <mode> <vault-abs-path> <YYYY-MM-DD>`, mode one of
+`branch | plain | declined`. A line means the project was already asked, so
+nothing re-prompts; `declined` means never auto-prompt again. Fill the vault
+path only when the conventions above would not find it.
 
-```
-<project-abs-path>	<mode>	<vault-abs-path>	<YYYY-MM-DD>
-```
+## The rules
 
-`mode` is `branch` | `plain` | `declined` (`in-tree` appears in older rows and is
-still read). It does two jobs:
+1. **Append-only, because the log is shared.** Other sessions have this file
+   open. An append is one small write; an in-place edit is read-modify-write
+   and silently drops anything that landed in between. Git keeps the history —
+   this rule is about not destroying a concurrent write. Corrections are new
+   entries: a heading, what was wrong, the corrected number. Nothing is ever
+   rewritten.
+2. **The log routes; the evidence is elsewhere.** End each entry with a
+   `**Pointer:**` line naming where the evidence lives — a notebook, a repo
+   file, a note in `notes/`, or honestly "this entry" when the entry is all
+   there is. A number in the log is a dated hint; open the pointed thing
+   before acting on it.
+3. **Write when a future session would otherwise repeat the work.** A result
+   and its numbers, a dead end, a constraint found the hard way — yes.
+   Progress narration ("refactored the parser") — no. An ended pursuit is the
+   highest-value entry: add `Kills: [[idea-name]]` on its own line, and the
+   session index will list it so the idea is not re-attempted cold.
+4. **Standing constraints get `#constraint`.** Most entries are events and may
+   age out of the injected index; a precondition must not. Start a bullet with
+   `#constraint` and the SessionStart hook prints it in full forever. Keep the
+   set small — every tagged line is in every session. State the rule, point at
+   the entries, and never copy result details up into the tag where later
+   corrections cannot reach them.
 
-- **Answers "was this project asked?"** — a line means yes, so nothing is
-  re-prompted across sessions. `declined` means never auto-prompt again; an
-  explicit request from the user always overrides.
-- **Answers "where is the vault?"** — fill the third column when the path is
-  unconventional, or leave it EMPTY to fall through to `.mdgraph/` and then the
-  git query. This is the only way to express a vault that neither convention
-  finds: a hand-named worktree, a vault outside the project tree, one shared by
-  several repos.
-
-Plain text rather than JSON, for the same reason the vault is markdown: greppable,
-appendable with `>>`, editable by hand, diffable. Keep it OUTSIDE the skill
-directory — that directory is a copy of an upstream repo, so state written there
-can be clobbered by a re-sync or committed upstream and publish local paths.
-
-## Reading and writing across areas
-
-- **On entering a repo:** resolve the vault (registry -> `.mdgraph/` -> git query;
-  `hooks/mdgraph-vault.sh` is that resolver), then tail-read the log for the area you
-  are working in (`WORKLOG-<area>.md` where one exists, `WORKLOG.md` otherwise),
-  ~10 entries. No vault and no registry line: the project has never been asked.
-- **Before asserting anything about past work:** grep the WHOLE `.mdgraph/` —
-  every log and every note. `grep -rn` spans them; `graph.py` reads all `*.md`
-  under the vault, so edges resolve across files with no configuration.
-- **Writing — one question decides the file: who reads this next?** Only a
-  future session in that area → its own log. The framework, a shared component,
-  or a decision that binds other areas → `WORKLOG.md`. Both → the main log, and
-  link it from the other. Notes are always shared.
-
-`graph.py` takes any directory, so pointing it at a parent sweeps every vault at
-once — sibling `<repo>-mdgraph` worktrees and `.mdgraph/` directories alike, since
-both are ordinary directories of markdown. `[[slug]]` resolves by name, not path,
-so links cross repos.
-
-## The five rules that aren't default
-
-0. **Consult before asserting.** Any claim about past decisions, results, or why
-   something was rejected gets a vault grep *first* — `dead` for ended pursuits,
-   `grep -in <term> WORKLOG.md` for rationale. A compressed memory of a conclusion
-   without its reason is how rationales get fabricated around true facts: the vault
-   holds the reason precisely so it never has to be reconstructed. (Learned twice on
-   2026-08-07: an already-ended pursuit re-recommended, a recorded jurisdiction rationale
-   replaced with an invented one.)
-1. **Append-only.** Never edit or delete a note to correct it. Add the new note,
-   and put one italic banner atop the old one:
-   *Superseded by [[new-slug]] (YYYY-MM-DD).* History is how you tell a finding
-   from a finding that used to be true.
-2. **The log routes; the notes carry the detail.** Any number in WORKLOG is a
-   dated hint. Open the pointed file before acting on it. Neither layer is
-   "true" — a note records what was found and when, and a later note can
-   supersede it. Stale entries are corrected by newer entries, never rewritten
-   in place, which also makes concurrent sessions safe since appends to the
-   tail merge cleanly.
-3. **An ended pursuit is the highest-value entry.** Recording that an attempt
-   ended, with the result and the mechanism that ended it, is what stops the
-   work being repeated. Every ended pursuit gets `Kills:` (see below) — the
-   edge records the decision event, and the query finds it.
-4. **Write when a future session would otherwise repeat the work.** That is the
-   whole test. A decision, a result, a dead end, a constraint discovered the
-   hard way — yes. Progress narration ("refactored the parser") — no.
-
-## Removing things
-
-Append-only governs corrections. It is not a ban on housekeeping.
-
-- **Wrong, outdated, reversed** → supersede, never edit in place. The old entry
-  is evidence of what was believed and why; deleting it destroys the reason the
-  correction was needed, which is usually the more valuable half.
-- **A secret landed in a note** → redact now, and treat the file as one copy of
-  many: git history still has it, so removing the line is theater. Rotate the
-  credential; rewrite history only if rotation is impossible.
-- **Scope abandoned, or the log grew long** → roll, don't delete.
-  `git mv .mdgraph/WORKLOG.md .mdgraph/WORKLOG-2026.md` and start a fresh tail.
-  Old entries stay greppable and `graph.py` still sees them, while the tail-read
-  stays cheap.
-- **Genuinely junk** — a mis-fired entry, a duplicate, a note about work that
-  never happened → delete it. Not everything written down is a finding.
-
-## Standing constraints
-
-Most entries are events: something happened, on a date. A few are **preconditions** —
-facts that bind every later decision and never expire. Where the operator lives. A
-latency budget. A licence term. A hardware limit.
-
-A dated log ages a precondition at the same rate as everything else, and that is
-backwards. The log is read newest-first, and a precondition is most needed long after
-it was written, by someone who does not know to look for it.
-
-Tag those lines `#constraint`. The SessionStart hook prints every tagged line in full
-and ignores the tail window, so the fact stays in context however long the log grows.
-
-```markdown
-- #constraint The operator is resident in Indonesia. Check any prop firm against that
-  firm's own restricted-country page before you propose, price, or survey it. Per-firm
-  results are in the cited entries. Do not restate a firm's status from memory.
-- Cites: [[eval-convexity-firm-survey]]
-```
-
-State the rule and cite the entries. Do not copy the per-firm results up here — that
-duplicates a fact that later entries may correct, and the copy will not be corrected
-with them.
-
-Keep the set small. Every tagged line is in every session forever. The test: would a
-session that did not know this produce work you have to throw away?
-
-## Edge syntax
-
-Each on its own line. This is what `graph.py` parses, so the form is exact:
-
-| syntax | meaning |
-|---|---|
-| `[[slug]]` | relates to |
-| `Supersedes: [[x]]` / `Superseded-by: [[x]]` | this replaces that |
-| `Kills: [[x]]` / `Killed-by: [[x]]` | pursuit of that idea ended here |
-| `Cites: [[x]]` | evidence — restate the number here, don't outsource it |
-
-A `[[slug]]` with no file yet is fine; it marks a note worth writing, and
-`graph.py orphans` lists them.
-
-## WORKLOG entry
-
-Newest entry last. Two shapes, both pure exposition.
-
-**Something you tried** — what was tried, the result with its numbers, the
-mechanism, and the decision event if one occurred. No status words, no verdict
-sentences — the reader infers:
+## Entry shapes
 
 ```markdown
 ## 2026-03-14 — retry-backoff
-- Tried exponential backoff on the upload queue to cut 429s → tail latency
-  worsened (p99 4.2s → 11s): retries stacked behind the same lock. Pursuit
-  stopped on this result.
+- Tried exponential backoff on the upload queue to cut 429s → p99 4.2s → 11s:
+  retries stacked behind the same lock. Pursuit stopped on this result.
 - Kills: [[exponential-backoff-upload]]
-- **Pointer:** .mdgraph/notes/upload-queue-contention.md
-```
+- **Pointer:** notes/upload-queue-contention.md
 
-**Something you learned** — a measurement, a constraint, a trap:
-
-```markdown
 ## 2026-03-19 — systemd-path
 - A systemd unit's PATH omits `~/.local/bin`, so a binary installed there is
-  not found under `systemd-run` even though it resolves in an interactive
-  shell. Cost two silent failures before it was diagnosed.
-- **Pointer:** .mdgraph/notes/minimal-environment-traps.md
+  not found under systemd-run even though an interactive shell resolves it.
+- **Pointer:** this entry
+
+## 2026-03-22 — retry-backoff, corrected
+- The 11s p99 above was a measurement artifact: the load generator shared the
+  lock it measured. Separate generator: p99 4.2s → 4.4s, no regression.
+- **Pointer:** notes/upload-queue-contention.md
 ```
 
-**Something that corrects an earlier entry** — the shape rule 1 asks for. The old
-entry is never edited; it gets a banner and stays:
+## Housekeeping
 
-```markdown
-## 2026-03-22 — upload-retry, corrected
-- The 11s p99 in [[retry-backoff]] was a measurement artifact. The load generator
-  shared the lock it was measuring. Re-run with a separate generator: p99 4.2s → 4.4s,
-  no regression. The backoff change was reverted for a reason that did not hold.
-- Supersedes: [[retry-backoff]]
-- **Pointer:** .mdgraph/notes/upload-queue-contention.md
-```
+- Log grew long → roll: `git mv WORKLOG.md WORKLOG-2026.md`, start a fresh
+  tail. Old entries stay greppable.
+- A secret landed in an entry → redact and rotate the credential; git history
+  has the old copy either way, so rotation is the real fix.
+- Genuinely junk (mis-fire, duplicate) → delete it. Not everything written is
+  a finding.
+- A repo that already keeps findings elsewhere (a reports tree) keeps them
+  there — one home per repo, not necessarily this one.
 
-Then one italic line at the top of the superseded note, and nothing else changes:
-*Superseded by [[upload-retry-corrected]] (2026-03-22).*
+## Reading
 
-**Keep an entry short.** A few lines carrying the numbers, the mechanism, and
-the decision event — the detail belongs in the pointed note, not the log. The
-tail-read is ten entries at a glance, so length in the log costs every future
-reader; and a long entry is usually narration that rule 4 already excludes.
-
-**No STATUS marks and no verdicts.** Lifecycle lives in the edges (`Kills:`,
-`Superseded-by:`) and in later entries; a recorded decision ("pursuit stopped",
-"adopted on date X by Y") is a fact — the judgment behind it stays with whoever
-made it. An entry that ended a pursuit carries the `Kills:` edge, since the
-edge is what the query reads.
-
-## Queries
-
-```bash
-python3 ~/.claude/skills/mdgraph/graph.py <dir> dead            # every ended pursuit, by edge (legacy STATUS also parsed)
-python3 ~/.claude/skills/mdgraph/graph.py <dir> neighbors <slug> [--hops 2]
-python3 ~/.claude/skills/mdgraph/graph.py <dir> orphans
-```
-
-Plain grep answers most questions (`grep -rn "\[\[slug\]\]"` finds incoming
-edges). The script re-parses on every run and stores nothing; if a vault ever
-outgrows that, emit SQLite derived from the markdown — gitignored, never
-authoritative.
+No tooling. `grep -rn <term> <vault>` answers "did we try this"; the
+SessionStart hook already injects each vault's recent headings, every
+`#constraint` line, and the list of `Kills:` targets into every session.
