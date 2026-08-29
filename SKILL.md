@@ -24,13 +24,13 @@ never write the conclusion as a judgment. "p99 went 4.2s → 11s: retries stacke
 behind the same lock" carries everything; "DEAD — do not re-attempt" is an
 opinion and does not belong.
 
-A decision belongs only when you can say **who or what made it**. "The
-pre-registered futility gate tripped", "the operator hit the country wall at
-signup", "adopted on 03-14" — those are facts about the world. "Pursuit stopped
-on this result", written by the same session that read the result, is not a
-report of a decision; it is a judgment being made and cited as its own source.
-Record the number and the mechanism, name the authority if there was one, and
-leave the conclusion to the reader.
+A decision belongs only when you can name **who or what made it**: a stopping
+rule declared before the test ran, an operator's call, a date something was
+adopted. Those are facts about the world. A session that reads a result and
+concludes the work should stop has not observed a decision, it has made one,
+and writing it as a decision hides whose it was. Record the number and the
+mechanism, name the authority if there was one, and leave the conclusion to
+the reader.
 
 ## Storage
 
@@ -50,7 +50,8 @@ by asking git, never by guessing a name:
 
 Commit with `git -C <vault> commit`, push like any branch. **Never create a
 vault inside a vault** — if a `WORKLOG.md` already exists at or above you, that
-is the vault (a nested one once grew 18 entries before anyone noticed).
+is the vault. A nested one indexes under its own name and reads as a separate
+project, so the corpus splits with no error to notice.
 
 The layout inside:
 
@@ -70,8 +71,8 @@ path only when the conventions above would not find it.
 
 1. **Append-only, because the log is shared.** Other sessions have this file
    open. An append is one small write; an in-place edit is read-modify-write
-   and silently drops anything that landed in between. Git keeps the history —
-   this rule is about not destroying a concurrent write. Corrections are new
+   and silently drops anything that landed in between. Git already holds the
+   history; what an in-place edit destroys is a concurrent write. Corrections are new
    entries: a heading, what was wrong, the corrected number. Nothing is ever
    rewritten.
 2. **The log routes; the evidence is elsewhere.** End each entry with a
