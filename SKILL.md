@@ -83,7 +83,10 @@ counts its referrers.
 1. **One entry, one file, written once.** Two sessions writing at the same time
    touch different files, so there is nothing to collide. Corrections are new
    entries that link the old one. The old entry stays as written. Do not edit an
-   entry to fix it: the earlier entry is what makes the correction legible.
+   entry to fix it: the earlier entry is what makes the correction legible. This
+   protects what was believed, not how it was typed. A bracket around a word
+   that never named an entry, a broken field name, a typo — fix those in place.
+   No claim changes, so there is nothing for a correction entry to record.
 2. **Write when a future session would otherwise repeat the work.** Write a
    result and its numbers, a dead end, an open question, a constraint found the
    hard way, or a trap that cost an afternoon. Do not write progress narration
