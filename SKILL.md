@@ -66,9 +66,9 @@ directory rule to violate, and no way to grow a second vault by accident.
 Below the fields, write what happened. Then two optional lines, one pointing
 out of the vault and one pointing inside it:
 
-- **`Source:`** — where the evidence lives. A notebook, a repo file, a URL, or
+- `- **Source:**` — where the evidence lives. A notebook, a repo file, a URL, or
   plainly "this entry" when the entry is all there is.
-- **`Relates: [[name]]`** — another entry in this vault, by filename without
+- `- **Relates:** [[name]]` — another entry in this vault, by filename without
   the extension.
 
 **Write `[[name]]` only when an entry of that name exists.** A notebook, a
