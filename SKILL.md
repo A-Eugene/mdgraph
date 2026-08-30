@@ -46,8 +46,8 @@ Tried absorption-timing fade and continuation on MGC Tokyo bursts. Five
 constructions, train/test split on the 2024-2026 cohort. Best cell reached
 t=1.4 in-sample and 0.2 out. The burst is real. The direction is not.
 
-Source: src/notebooks/reports/topics/mgc_tokyo/mgc_tokyo.ipynb
-Relates: [[mgc-open-one-sided-commitment]]
+- **Source:** src/notebooks/reports/topics/mgc_tokyo/mgc_tokyo.ipynb
+- **Relates:** [[mgc-open-one-sided-commitment]]
 ```
 
 **Two fields, both required.**

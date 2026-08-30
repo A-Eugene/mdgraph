@@ -32,8 +32,8 @@ date: 2026-08-21
 Five constructions, train/test split on the 2024-2026 cohort. Best cell reached
 t=1.4 in-sample and 0.2 out. The burst itself is real; the direction is not.
 
-Source: src/notebooks/reports/topics/mgc_tokyo/mgc_tokyo.ipynb
-Relates: [[mgc-open-one-sided-commitment]]
+- **Source:** src/notebooks/reports/topics/mgc_tokyo/mgc_tokyo.ipynb
+- **Relates:** [[mgc-open-one-sided-commitment]]
 ```
 
 **The filename is the identity and the link target.** Frontmatter is what makes
