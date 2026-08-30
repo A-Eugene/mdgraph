@@ -20,7 +20,7 @@ storage, so nothing is lost in extraction and a write costs nothing.
 
 **Entries are informative, never argumentative.** Record what happened with
 enough mechanism and number that a reader can draw their own conclusion. "p99
-went 4.2s → 11s: retries stacked behind the same lock" carries everything;
+went 4.2s → 11s: retries stacked behind the same lock" carries everything.
 "DEAD — do not re-attempt" is an opinion and does not belong. Nothing is ever
 marked closed.
 
@@ -44,7 +44,7 @@ date: 2026-08-21
 
 Tried absorption-timing fade and continuation on MGC Tokyo bursts. Five
 constructions, train/test split on the 2024-2026 cohort. Best cell reached
-t=1.4 in-sample and 0.2 out. The burst itself is real; the direction is not.
+t=1.4 in-sample and 0.2 out. The burst is real. The direction is not.
 
 Source: src/notebooks/reports/topics/mgc_tokyo/mgc_tokyo.ipynb
 Relates: [[mgc-open-one-sided-commitment]]
@@ -60,7 +60,7 @@ Relates: [[mgc-open-one-sided-commitment]]
   describe the commit, so this is the only durable one.
 
 **Frontmatter is what makes a file an entry.** A README or a scratch file at the
-vault root has none and is ignored. Nothing else marks the boundary — no
+vault root has no frontmatter, so no session indexes it. Nothing else marks the boundary — no
 directory rule to violate, and no way to grow a second vault by accident.
 
 Below the fields, write what happened. Then two optional lines, one pointing
@@ -73,25 +73,24 @@ out of the vault and one pointing inside it:
 
 **Write `[[name]]` only when an entry of that name exists.** A notebook, a
 topic, or a concept nobody wrote up goes on `Source:` or in plain text, never in
-brackets. The point is that a reader can follow any bracket without first
-checking whether it resolves — one that does not forces every other bracket to
-be verified too. Plain text costs nothing: the name is still greppable and still
+brackets. A session must be able to follow any bracket without
+checking it first. One bracket that does not resolve forces every other bracket
+to be checked too. Plain text costs nothing: the name is still greppable and still
 counts its referrers.
 
 ## The rules
 
 1. **One entry, one file, written once.** Two sessions writing at the same time
    touch different files, so there is nothing to collide. Corrections are new
-   entries that link the old one; the old entry stays as written. Do not edit an
-   entry to fix it — the record of what was believed is the thing that makes the
-   correction legible.
-2. **Write when a future session would otherwise repeat the work.** A result and
-   its numbers, a dead end, an open question, a constraint found the hard way,
-   a trap that cost an afternoon — yes. Progress narration ("refactored the
-   parser") — no.
-3. **Date everything, in the text.** Both in `date:` and in prose where a number
-   is time-sensitive. Without it a reader cannot tell last week's result from
-   last year's, and staleness becomes invisible.
+   entries that link the old one. The old entry stays as written. Do not edit an
+   entry to fix it: the earlier entry is what makes the correction legible.
+2. **Write when a future session would otherwise repeat the work.** Write a
+   result and its numbers, a dead end, an open question, a constraint found the
+   hard way, or a trap that cost an afternoon. Do not write progress narration
+   such as "refactored the parser".
+3. **Date everything, in the text.** Put it in `date:`, and in the prose wherever
+   a number is time-sensitive. Without a date, a session cannot tell last week's
+   result from last year's. Staleness then becomes invisible.
 
 ## Storage
 
@@ -126,10 +125,10 @@ corpus splits with no error to notice.
 nothing re-prompts. Fill the vault path only when the conventions above would
 not find it.
 
-**The registry answers "was this asked", not "what exists."** A vault set up
-without a registry line is a normal vault and works fine — the hooks resolve
-through git and will index it. So never read the registry as an inventory. To
-enumerate every vault, ask the disk:
+**The registry answers "was this asked", not "what exists."** A vault created
+without a registry line is a normal vault. The hooks resolve through git, so
+they index it anyway. Never read the registry as an inventory. To list every
+vault, ask the disk:
 
 ```bash
 # sibling worktrees on the mdgraph branch
@@ -144,8 +143,7 @@ find <projects> -maxdepth 3 -type d -name .mdgraph
 Both, not either: the first misses plain-mode vaults and the second misses
 every branch vault. Append a registry line for anything the scan finds that the
 registry lacks. Getting this wrong is quiet — you conclude a project has no
-memory while its entries sit in a vault the hooks have been indexing all
-along.
+memory while the hooks index its entries in every session.
 
 ## Reading
 
