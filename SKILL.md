@@ -155,8 +155,11 @@ grep -rl "\[\[<name>\]\]" <vault>      # structural: what references this
 grep -h "^description:" <vault>/*.md   # the whole index, on demand
 ```
 
-The SessionStart hook already prints every entry's description, so a session
-arrives knowing what the vault holds and greps for the rest.
+The SessionStart hook prints one line per vault on the host: name, entry
+count, path. It does not print contents, because a vault is memory for one
+repository and a session outside that repository has no use for it. On entering
+a repository, read that vault's index yourself — the third command above — and
+you know what it holds. That read is what keeps a standing constraint in view.
 
 ## Housekeeping
 

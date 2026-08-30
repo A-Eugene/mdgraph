@@ -1,44 +1,26 @@
 #!/usr/bin/env bash
-# SessionStart hook: print every vault entry's description as ambient context.
+# SessionStart hook: one line per vault on this host — name, entry count, path.
 #
-# Every entry, not a window. A window ages out the facts that bind longest, and a
-# session that does not know a constraint exists cannot grep for one. Cost grows
-# with the vault: ~8k tokens at 300 entries, ~13k at 500. Past that, move old
-# entries to an archive/ subdirectory — still greppable, no longer indexed.
-#
-# Indexes each vault ONCE. Every worktree of a repo resolves to the same vault, so
-# a naive loop over checkouts would print the same index once per checkout.
+# Nothing more. A vault is memory for ONE repository, and a session that has not
+# entered that repository has no use for its contents. The session that does
+# enter it reads the index itself, for that vault only:
+#     grep -h "^description:" <vault>/*.md
+# That is one of the three exact operations the contract already names, and it
+# costs tokens only for the vault the session is actually working in.
 set -u
-seen=""
+seen=""; out=""
 for repo in /root/Projects/*/; do
   real=$("$(dirname "$0")/mdgraph-vault.sh" "$repo")
   [ -n "$real" ] && [ -d "$real" ] || continue
   case " $seen " in *" $real "*) continue ;; esac
   seen="$seen $real"
-
-  # An entry is a root-level .md whose frontmatter carries description and date.
-  # Anything else — a README, a scratch file — has no frontmatter and is skipped.
-  entries=$(
-    for f in "$real"/*.md; do
-      [ -f "$f" ] || continue
-      awk -v n="$(basename "${f%.md}")" '
-        NR==1 && $0!="---" {exit}
-        NR>1 && $0=="---"  {if (d!="" && s!="") printf "%s\t%s\t%s\n", d, n, s; exit}
-        /^date:/           {sub(/^date:[ ]*/,"");        d=$0}
-        /^description:/    {sub(/^description:[ ]*/,""); s=$0}
-      ' "$f"
-    done | sort
-  )
-
-  # Pre-2026-09 vaults keep a WORKLOG; index its headings until it is converted.
+  n=$(grep -l '^description:' "$real"/*.md 2>/dev/null | wc -l)
   shopt -s nullglob; logs=("$real"/WORKLOG*.md); shopt -u nullglob
-  [ -n "$entries" ] || [ "${#logs[@]}" -gt 0 ] || continue
-
-  echo "=== mdgraph: $(basename "$repo") — grep this vault before ANY claim about past work ==="
-  [ -n "$entries" ] && printf '%s\n' "$entries" | awk -F'\t' '{printf "  [[%s]] (%s) %s\n", $2, $1, $3}'
-  for w in "${logs[@]}"; do
-    echo "--- $(basename "$w") ---"
-    grep -n "^## " "$w" | tail -45
-  done
+  [ "$n" -gt 0 ] || [ "${#logs[@]}" -gt 0 ] || continue
+  out="$out  $(basename "$repo"): $n entries, $real"$'\n'
 done
+[ -n "$out" ] || exit 0
+echo "=== mdgraph vaults on this host. Entering one of these repos? Read its index first:"
+echo "===   grep -h '^description:' <vault>/*.md   — then grep the vault before any claim about past work ==="
+printf '%s' "$out"
 exit 0

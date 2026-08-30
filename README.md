@@ -104,11 +104,11 @@ mkdir -p ~/.claude/hooks && cp hooks/*.sh ~/.claude/hooks/
 }
 ```
 
-- `mdgraph-index.sh` (SessionStart) — prints **every** entry's description.
-  Not a window: a window ages out the facts that bind longest, and a session
-  that does not know a constraint exists cannot grep for one. Cost is about 8k
-  tokens at 300 entries and 13k at 500; past that, move old entries into
-  `archive/` where they stay greppable but stop being indexed.
+- `mdgraph-index.sh` (SessionStart) — prints one line per vault on the host:
+  name, entry count, path. About 100 tokens. It does not print any vault's
+  contents. A vault is memory for one repository, and a session that has not
+  entered that repository has nothing to do with it. On entering, the session
+  reads that vault's index with `grep -h "^description:" <vault>/*.md`.
 - `mdgraph-nudge.sh` (Stop) — warns when code commits have outpaced the vault.
 - `mdgraph-vault.sh` — the resolver both call; not registered itself.
 
