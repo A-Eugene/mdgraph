@@ -9,7 +9,7 @@
 # costs tokens only for the vault the session is actually working in.
 set -u
 seen=""; out=""
-for repo in /root/Projects/*/; do
+for repo in /root/ /root/Projects/*/; do
   real=$("$(dirname "$0")/mdgraph-vault.sh" "$repo")
   [ -n "$real" ] && [ -d "$real" ] || continue
   case " $seen " in *" $real "*) continue ;; esac

@@ -11,7 +11,7 @@
 # object store, so they are deduped on the common git dir.
 set -u
 seen=""
-for repo in /root/Projects/*/; do
+for repo in /root/ /root/Projects/*/; do
   real=$("$(dirname "$0")/mdgraph-vault.sh" "$repo")
   [ -n "$real" ] && [ -d "$real" ] || continue
 
