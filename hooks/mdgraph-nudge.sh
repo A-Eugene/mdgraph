@@ -28,7 +28,7 @@ for repo in /root/Projects/*/; do
   # land on the vault's own branch, so anything in the code repo is code movement.
   n=$(git -C "$repo" log --oneline --since="@$vt" 2>/dev/null | wc -l)
   if [ "${n:-0}" -gt 0 ]; then
-    echo "mdgraph: $(basename "$repo") has $n commit(s) touching code since the last vault entry. Append one if a future session would otherwise repeat the work."
+    echo "mdgraph: $(basename "$repo") has $n commit(s) touching code since the last vault entry. Write one if a future session would otherwise repeat the work."
   fi
 done
 exit 0

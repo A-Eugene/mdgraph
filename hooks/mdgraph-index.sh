@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# SessionStart hook: inject each vault's entry index as ambient context.
-# The read-side complement to mdgraph-nudge.sh — targets the observed failure mode
-# (asserting about past work from compressed memory instead of the vault): facts that
-# are IN context do not get fabricated around; out-of-context ones do. Headings only;
-# the entries themselves stay retrieval-on-demand.
+# SessionStart hook: print every vault entry's description as ambient context.
 #
-# Indexes each vault ONCE. Every worktree of a repo resolves to the same vault, so a
-# naive loop over checkouts would print the same index once per checkout.
+# Every entry, not a window. A window ages out the facts that bind longest, and a
+# session that does not know a constraint exists cannot grep for one. Cost grows
+# with the vault: ~8k tokens at 300 entries, ~13k at 500. Past that, move old
+# entries to an archive/ subdirectory — still greppable, no longer indexed.
+#
+# Indexes each vault ONCE. Every worktree of a repo resolves to the same vault, so
+# a naive loop over checkouts would print the same index once per checkout.
 set -u
 seen=""
 for repo in /root/Projects/*/; do
@@ -15,38 +16,29 @@ for repo in /root/Projects/*/; do
   case " $seen " in *" $real "*) continue ;; esac
   seen="$seen $real"
 
-  shopt -s nullglob
-  logs=("$real"/WORKLOG*.md)
-  shopt -u nullglob
-  [ "${#logs[@]}" -gt 0 ] || continue
+  # An entry is a root-level .md whose frontmatter carries description and date.
+  # Anything else — a README, a scratch file — has no frontmatter and is skipped.
+  entries=$(
+    for f in "$real"/*.md; do
+      [ -f "$f" ] || continue
+      awk -v n="$(basename "${f%.md}")" '
+        NR==1 && $0!="---" {exit}
+        NR>1 && $0=="---"  {if (d!="" && s!="") printf "%s\t%s\t%s\n", d, n, s; exit}
+        /^date:/           {sub(/^date:[ ]*/,"");        d=$0}
+        /^description:/    {sub(/^description:[ ]*/,""); s=$0}
+      ' "$f"
+    done | sort
+  )
 
-  echo "=== mdgraph index: $(basename "$repo") — grep this vault before ANY claim about past decisions/results; these are headings only ==="
+  # Pre-2026-09 vaults keep a WORKLOG; index its headings until it is converted.
+  shopt -s nullglob; logs=("$real"/WORKLOG*.md); shopt -u nullglob
+  [ -n "$entries" ] || [ "${#logs[@]}" -gt 0 ] || continue
+
+  echo "=== mdgraph: $(basename "$repo") — grep this vault before ANY claim about past work ==="
+  [ -n "$entries" ] && printf '%s\n' "$entries" | awk -F'\t' '{printf "  [[%s]] (%s) %s\n", $2, $1, $3}'
   for w in "${logs[@]}"; do
     echo "--- $(basename "$w") ---"
     grep -n "^## " "$w" | tail -45
   done
-  # Standing constraints are preconditions, not events. A dated log ages them out at
-  # the same rate as everything else, so the tail above hides them exactly when they
-  # still bind. This pass ignores the window: a #constraint line is always shown.
-  # (2026-08-21: an eligibility rule sat at entry 26 of 206 and no session ever saw it.
-  # Options the operator could not use were re-proposed for weeks. A session that does
-  # not know a constraint exists cannot grep for one, so rule 0 never fires.)
-  # A constraint is a bullet whose text BEGINS with the tag. Matching the bare word
-  # anywhere also catches prose that merely mentions it, and a plain line-grep truncates
-  # a wrapped bullet mid-sentence — both observed on the first cut of this hook.
-  cons=$(awk '
-    /^[[:space:]]*[-*][[:space:]]+#constraint/            { p=1; print; next }
-    p && /^[[:space:]]+/ && !/^[[:space:]]*[-*][[:space:]]/ { print; next }
-                                                          { p=0 }
-  ' "${logs[@]}" 2>/dev/null)
-  if [ -n "$cons" ]; then
-    echo "--- standing constraints (always shown; the tail above cannot hide these) ---"
-    printf '%s\n' "$cons"
-  fi
-  # No ended-pursuit list. A "Kills:" edge was written by whichever session read the
-  # number, so injecting it every session broadcast that session's judgment as settled
-  # fact. Measured 2026-08-30: of 121 such edges, 16 cited a bar declared before the
-  # test and 8 an operator decision; ~100 were the model's own call. Headings carry
-  # what was tried and what came back, which is the same information without the verdict.
 done
 exit 0

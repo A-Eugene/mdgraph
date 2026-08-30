@@ -1,22 +1,20 @@
-flowchart TB
-  subgraph TRUTH["TRUTH — markdown, append-only, git-versioned"]
-    R1["report / topic file<br/>node = verbatim section<br/>numbers + provenance inline"]
-    R2["report / topic file"]
-    G["GLOSSARY.md<br/>one node per concept"]
-    R1 -- "[[slug]] · Cites:" --> G
-    R2 -- "Supersedes: · Kills:" --> R1
+graph LR
+  subgraph vault["&lt;repo&gt;-mdgraph  (orphan branch, sibling worktree)"]
+    direction TB
+    E1["upload-queue-contention.md<br/><i>description + date</i>"]
+    E2["retry-backoff-reverted.md<br/><i>description + date</i>"]
+    E3["latency-budget.md<br/><i>description + date</i>"]
+    E1 -. "[[link]]" .- E2
+    E2 -. "[[link]]" .- E3
   end
 
-  subgraph ROUTER["ROUTER — WORKLOG.md"]
-    W["dated ledger, newest last<br/>status word + one-liner + pointer<br/>ALIVE / DEAD / WATCH / FROZEN"]
-  end
+  CODE[("repo<br/>notebooks, source, reports")]
+  HOOK["mdgraph-index.sh<br/>SessionStart"]
+  SESS["a Claude session"]
 
-  subgraph CACHE["CACHE — derived, disposable"]
-    P["graph.py<br/>parses [[links]] + typed edges<br/>neighbors · dead · orphans"]
-  end
-
-  S(["session start"]) -- "read tail (~10 entries)" --> W
-  E(["task end / pre-compact"]) -- "append entry" --> W
-  W -- "pointer → ground before acting" --> TRUTH
-  TRUTH -- "re-parsed every run<br/>never authoritative" --> P
-  Q(["query"]) --> P
+  E1 -->|"Source:"| CODE
+  E2 -->|"Source:"| CODE
+  vault -->|"every description"| HOOK
+  HOOK -->|"ambient context"| SESS
+  SESS -->|"grep -rn / grep -rl [[name]]"| vault
+  SESS -->|"writes one new file"| vault
