@@ -63,9 +63,19 @@ Relates: [[mgc-open-one-sided-commitment]]
 vault root has none and is ignored. Nothing else marks the boundary — no
 directory rule to violate, and no way to grow a second vault by accident.
 
-Below the fields, write what happened. Point at the evidence wherever it
-lives — a notebook, a repo file, a URL — or say plainly that the entry is all
-there is. Link related entries with `[[filename-without-extension]]`.
+Below the fields, write what happened. Then two optional lines, one pointing
+out of the vault and one pointing inside it:
+
+- **`Source:`** — where the evidence lives. A notebook, a repo file, a URL, or
+  plainly "this entry" when the entry is all there is.
+- **`Relates: [[name]]`** — another entry in this vault, by filename without
+  the extension.
+
+**Write `[[name]]` only when an entry of that name exists.** A notebook, a
+topic, or a concept nobody wrote up goes on `Source:` or in plain text, never in
+brackets. A bracket is a promise there is something to follow, and it stays a
+reliable one only if it is never written on credit. Plain text costs nothing:
+the name is still greppable and still counts its referrers.
 
 ## The rules
 

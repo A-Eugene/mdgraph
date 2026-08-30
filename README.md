@@ -40,6 +40,12 @@ Relates: [[mgc-open-one-sided-commitment]]
 a file an entry, so a README at the vault root is ignored and no directory rule
 can be violated.
 
+**Two reference fields, two directions.** `Source:` names where the evidence
+lives and leaves the vault — a notebook, a repo file, a URL. `Relates: [[name]]`
+names another entry and stays inside it. A `[[name]]` is written only when that
+entry exists, so a bracket is a reliable signal rather than a hint; anything else
+is a path or plain text, which stays greppable either way.
+
 **No hierarchy.** Files sit flat and reference each other by name. A tree would
 demand each entry have exactly one home, and findings do not — an entry about a
 range-breakout test on gold during Tokyo hours belongs under four topics at
