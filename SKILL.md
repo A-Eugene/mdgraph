@@ -115,6 +115,27 @@ corpus splits with no error to notice.
 nothing re-prompts. Fill the vault path only when the conventions above would
 not find it.
 
+**The registry answers "was this asked", not "what exists."** A vault set up
+without a registry line is a normal vault and works fine — the hooks resolve
+through git and will index it. So never read the registry as an inventory. To
+enumerate every vault, ask the disk:
+
+```bash
+# sibling worktrees on the mdgraph branch
+for r in <projects>/*/; do
+  git -C "$r" worktree list --porcelain 2>/dev/null |
+    awk '/^worktree /{w=$2} /^branch refs\/heads\/mdgraph$/{print w; exit}'
+done | sort -u
+# plain-mode vaults
+find <projects> -maxdepth 3 -type d -name .mdgraph
+```
+
+Both, not either: the first misses plain-mode vaults and the second misses
+every branch vault. Append a registry line for anything the scan finds that the
+registry lacks. Getting this wrong is quiet — you conclude a project has no
+memory while its entries sit in a vault the hooks have been indexing all
+along.
+
 ## Reading
 
 Three exact operations. No similarity, no query layer, no tooling:

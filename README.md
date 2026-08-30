@@ -72,6 +72,16 @@ these links returns almost nothing, because most links point at entries nobody
 has written yet. Everything a traversal would surface is already in the hook's
 injection or one `grep -rl` away.
 
+## Finding the vaults
+
+A registry at `~/.claude/mdgraph-registry.txt` records which projects were
+asked. It is not an inventory — a vault created without a registry line works
+fine, because the hooks resolve through git rather than the file. Enumerate by
+scanning the disk for both storage modes, sibling worktrees on the `mdgraph`
+branch and plain `.mdgraph/` directories. Reading the registry as the list is
+quiet when it is wrong: you conclude a project has no memory while its entries
+sit in a vault the hooks have been indexing all along.
+
 ## Enforcement (hooks)
 
 The contract binds only when loaded, so the read side is mechanical. Three
