@@ -88,21 +88,26 @@ branch and plain `.mdgraph/` directories. Reading the registry as the list is
 quiet when it is wrong: you conclude a project has no memory while its entries
 sit in a vault the hooks have been indexing all along.
 
-## Enforcement (hooks)
-
-The contract binds only when loaded, so the read side is mechanical. Three
-scripts under `hooks/`; copy them out and register two:
+## Install
 
 ```bash
-mkdir -p ~/.claude/hooks && cp hooks/*.sh ~/.claude/hooks/
+./install.sh
 ```
 
-```json
-"hooks": {
-  "SessionStart": [{"hooks": [{"type": "command", "command": "$HOME/.claude/hooks/mdgraph-index.sh"}]}],
-  "Stop":         [{"hooks": [{"type": "command", "command": "$HOME/.claude/hooks/mdgraph-nudge.sh"}]}]
-}
-```
+Copies the skill to `~/.claude/skills/mdgraph/`, the three hook scripts to
+`~/.claude/hooks/`, registers `mdgraph-index.sh` on SessionStart and
+`mdgraph-nudge.sh` on Stop in `~/.claude/settings.json` without touching other
+hooks, and creates a plain-mode host vault at `~/.mdgraph` for work that is not
+about one repository. Set `PROJECTS` if your repos are not under
+`/root/Projects`; the hooks glob that directory.
+
+Copies, never symlinks. Add one line to your always-loaded agent instructions
+telling sessions the vault convention exists — a skill body only loads when
+invoked.
+
+## Enforcement (hooks)
+
+The contract binds only when loaded, so the read side is mechanical.
 
 - `mdgraph-index.sh` (SessionStart) — prints one line per vault on the host:
   name, entry count, path. About 100 tokens. It does not print any vault's
@@ -111,8 +116,6 @@ mkdir -p ~/.claude/hooks && cp hooks/*.sh ~/.claude/hooks/
   reads that vault's index with `grep -h "^description:" <vault>/*.md`.
 - `mdgraph-nudge.sh` (Stop) — warns when code commits have outpaced the vault.
 - `mdgraph-vault.sh` — the resolver both call; not registered itself.
-
-Both scan `/root/Projects/*/`; change that glob to wherever your repos live.
 
 ## Converting an existing vault
 
@@ -138,17 +141,6 @@ first commit, so `git mv` on one fails with "not under version control". Grep fo
 links to the old name first, commit, then rename.
 
 The index hook reads both shapes, so a vault works throughout the conversion.
-
-## Install
-
-```bash
-mkdir -p ~/.claude/skills/mdgraph
-cp SKILL.md ~/.claude/skills/mdgraph/
-```
-
-Then register the hooks above, and add one line to your always-loaded agent
-instructions telling sessions the vault convention exists — a skill body only
-loads when invoked.
 
 ## License
 
