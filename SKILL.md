@@ -73,9 +73,10 @@ out of the vault and one pointing inside it:
 
 **Write `[[name]]` only when an entry of that name exists.** A notebook, a
 topic, or a concept nobody wrote up goes on `Source:` or in plain text, never in
-brackets. A bracket is a promise there is something to follow, and it stays a
-reliable one only if it is never written on credit. Plain text costs nothing:
-the name is still greppable and still counts its referrers.
+brackets. The point is that a reader can follow any bracket without first
+checking whether it resolves — one that does not forces every other bracket to
+be verified too. Plain text costs nothing: the name is still greppable and still
+counts its referrers.
 
 ## The rules
 

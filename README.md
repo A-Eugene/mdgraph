@@ -43,7 +43,7 @@ can be violated.
 **Two reference fields, two directions.** `Source:` names where the evidence
 lives and leaves the vault — a notebook, a repo file, a URL. `Relates: [[name]]`
 names another entry and stays inside it. A `[[name]]` is written only when that
-entry exists, so a bracket is a reliable signal rather than a hint; anything else
+entry exists, so a reader can follow any bracket without checking it first; anything else
 is a path or plain text, which stays greppable either way.
 
 **No hierarchy.** Files sit flat and reference each other by name. A tree would
