@@ -123,6 +123,14 @@ python3 scripts/convert-to-entries.py <vault> --apply            # write entries
 python3 scripts/convert-to-entries.py <vault> --apply --remove-log
 ```
 
+The second invocation keeps `--apply`: entries it already wrote are recognised
+and skipped, so the run reaches the removal step. A file that exists but differs
+still refuses, so a genuine name collision cannot be overwritten.
+
+**Commit before renaming anything.** New entry files are untracked until the
+first commit, so `git mv` on one fails with "not under version control". Grep for
+links to the old name first, commit, then rename.
+
 The index hook reads both shapes, so a vault works throughout the conversion.
 
 ## Install

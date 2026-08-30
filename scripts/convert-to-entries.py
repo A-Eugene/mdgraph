@@ -76,11 +76,16 @@ def main():
     head = git(v, "rev-parse", "HEAD")
     print(f"  vault HEAD before: {head}")
 
-    # 4. write entries
-    for s, d, desc, body in plan:
-        f = v / f"{s}.md"
-        if f.exists(): sys.exit(f"REFUSING: {f} already exists")
-        f.write_text(f"---\ndescription: {desc}\ndate: {d}\n---\n\n{body}\n", encoding="utf8")
+    # 4. write entries. A finished conversion is resumable: --apply prints "re-run with
+    # --remove-log", so the second invocation must reach the removal step instead of
+    # tripping the exists-guard on the files it wrote itself.
+    for slug, d, desc, body in plan:
+        f = v / f"{slug}.md"
+        want = f"---\ndescription: {desc}\ndate: {d}\n---\n\n{body}\n"
+        if f.exists():
+            if f.read_text(encoding="utf8") == want: continue      # already converted, ours
+            sys.exit(f"REFUSING: {f} exists and differs from what this run would write")
+        f.write_text(want, encoding="utf8")
 
     # 5. verify before removing anything
     written = sum(1 for s, _, _, _ in plan if (v / f"{s}.md").is_file())
@@ -92,7 +97,9 @@ def main():
         for log in logs: log.unlink()
         print(f"  removed {len(logs)} log file(s) — recover from {tar} or git {head}")
     else:
-        print("  logs kept. Re-run with --remove-log once you have eyeballed the entries.")
+        print("  logs kept. Re-run the SAME command plus --remove-log once you have")
+        print("  eyeballed the entries. New files are untracked until you commit, so")
+        print("  `git mv` on one will fail — commit first, then rename.")
 
 if __name__ == "__main__":
     main()
