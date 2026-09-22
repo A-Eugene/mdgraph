@@ -37,11 +37,11 @@ t=1.4 in-sample and 0.2 out. The burst itself is real; the direction is not.
 ```
 
 **The filename is the identity and the link target.** Frontmatter is what makes
-a file an entry, so a README at the vault root is ignored and no directory rule
+a file an entry, so a README at the graph root is ignored and no directory rule
 can be violated.
 
 **Two reference fields, two directions.** `Source:` names where the evidence
-lives and leaves the vault — a notebook, a repo file, a URL. `Relates: [[name]]`
+lives and leaves the graph — a notebook, a repo file, a URL. `Relates: [[name]]`
 names another entry and stays inside it. A `[[name]]` is written only when that
 entry exists, so a reader can follow any bracket without checking it first; anything else
 is a path or plain text, which stays greppable either way.
@@ -68,9 +68,9 @@ collide.
 Three exact operations. No embeddings, no similarity, no query layer:
 
 ```bash
-grep -rn "<term>" <vault>              # lexical
-grep -rl "\[\[<name>\]\]" <vault>      # structural: what references this
-grep -h "^description:" <vault>/*.md   # the whole index, on demand
+grep -rn "<term>" <graph>              # lexical
+grep -rl "\[\[<name>\]\]" <graph>      # structural: what references this
+grep -h "^description:" <graph>/*.md   # the whole index, on demand
 ```
 
 There is no query tool, and building one is not worth it: a graph traversal over
@@ -78,15 +78,15 @@ these links returns almost nothing, because most links point at entries nobody
 has written yet. Everything a traversal would surface is already in the hook's
 injection or one `grep -rl` away.
 
-## Finding the vaults
+## Finding the graphs
 
 A registry at `~/.claude/mdgraph-registry.txt` records which projects were
-asked. It is not an inventory — a vault created without a registry line works
+asked. It is not an inventory — a graph created without a registry line works
 fine, because the hooks resolve through git rather than the file. Enumerate by
 scanning the disk for both storage modes, sibling worktrees on the `mdgraph`
 branch and plain `.mdgraph/` directories. Reading the registry as the list is
 quiet when it is wrong: you conclude a project has no memory while its entries
-sit in a vault the hooks have been indexing all along.
+sit in a graph the hooks have been indexing all along.
 
 ## Install
 
@@ -97,39 +97,39 @@ sit in a vault the hooks have been indexing all along.
 Copies the skill to `~/.claude/skills/mdgraph/`, the three hook scripts to
 `~/.claude/hooks/`, registers `mdgraph-index.sh` on SessionStart and
 `mdgraph-nudge.sh` on Stop in `~/.claude/settings.json` without touching other
-hooks, and creates a plain-mode host vault at `~/.mdgraph` for work that is not
+hooks, and creates a plain-mode host graph at `~/.mdgraph` for work that is not
 about one repository. Set `PROJECTS` if your repos are not under
 `/root/Projects`; the hooks glob that directory.
 
 Copies, never symlinks. Add one line to your always-loaded agent instructions
-telling sessions the vault convention exists — a skill body only loads when
+telling sessions the graph convention exists — a skill body only loads when
 invoked.
 
 ## Enforcement (hooks)
 
 The contract binds only when loaded, so the read side is mechanical.
 
-- `mdgraph-index.sh` (SessionStart) — prints one line per vault on the host:
-  name, entry count, path. About 100 tokens. It does not print any vault's
-  contents. A vault is memory for one repository, and a session that has not
+- `mdgraph-index.sh` (SessionStart) — prints one line per graph on the host:
+  name, entry count, path. About 100 tokens. It does not print any graph's
+  contents. A graph is memory for one repository, and a session that has not
   entered that repository has nothing to do with it. On entering, the session
-  reads that vault's index with `grep -h "^description:" <vault>/*.md`.
-- `mdgraph-nudge.sh` (Stop) — warns when code commits have outpaced the vault.
-- `mdgraph-vault.sh` — the resolver both call; not registered itself.
+  reads that graph's index with `grep -h "^description:" <graph>/*.md`.
+- `mdgraph-nudge.sh` (Stop) — warns when code commits have outpaced the graph.
+- `mdgraph-resolve.sh` — the resolver both call; not registered itself.
 
-## Converting an existing vault
+## Converting an existing graph
 
-`scripts/convert-to-entries.py` splits a `WORKLOG.md` vault into one file per
-entry. It refuses to run on a vault with uncommitted changes, since another
+`scripts/convert-to-entries.py` splits a `WORKLOG.md` graph into one file per
+entry. It refuses to run on a graph with uncommitted changes, since another
 session may be mid-write. It writes a tarball to `~/backups/mdgraph-preconvert/`
 and records the pre-conversion commit before touching anything, reports every
 `## ` heading it did not convert, and leaves the logs in place until you pass
 `--remove-log`.
 
 ```bash
-python3 scripts/convert-to-entries.py <vault>                    # dry run
-python3 scripts/convert-to-entries.py <vault> --apply            # write entries, keep logs
-python3 scripts/convert-to-entries.py <vault> --apply --remove-log
+python3 scripts/convert-to-entries.py <graph>                    # dry run
+python3 scripts/convert-to-entries.py <graph> --apply            # write entries, keep logs
+python3 scripts/convert-to-entries.py <graph> --apply --remove-log
 ```
 
 The second invocation keeps `--apply`: entries it already wrote are recognised
@@ -140,7 +140,7 @@ still refuses, so a genuine name collision cannot be overwritten.
 first commit, so `git mv` on one fails with "not under version control". Grep for
 links to the old name first, commit, then rename.
 
-The index hook reads both shapes, so a vault works throughout the conversion.
+The index hook reads both shapes, so a graph works throughout the conversion.
 
 ## License
 

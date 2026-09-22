@@ -1,5 +1,5 @@
 graph LR
-  subgraph vault["&lt;repo&gt;-mdgraph  (orphan branch, sibling worktree)"]
+  subgraph graph["&lt;repo&gt;-mdgraph  (orphan branch, sibling worktree)"]
     direction TB
     E1["upload-queue-contention.md<br/><i>description + date</i>"]
     E2["retry-backoff-reverted.md<br/><i>description + date</i>"]
@@ -14,7 +14,7 @@ graph LR
 
   E1 -->|"Source:"| CODE
   E2 -->|"Source:"| CODE
-  vault -->|"every description"| HOOK
+  graph -->|"every description"| HOOK
   HOOK -->|"ambient context"| SESS
-  SESS -->|"grep -rn / grep -rl [[name]]"| vault
-  SESS -->|"writes one new file"| vault
+  SESS -->|"grep -rn / grep -rl [[name]]"| graph
+  SESS -->|"writes one new file"| graph

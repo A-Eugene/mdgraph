@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Convert a WORKLOG-style mdgraph vault to one file per entry.
+"""Convert a WORKLOG-style mdgraph graph to one file per entry.
 
-Refuses to run on a dirty vault, backs up before touching anything, verifies the
+Refuses to run on a dirty graph, backs up before touching anything, verifies the
 entry count round-trips, and leaves the WORKLOG in place unless --remove-log is
 passed AND verification passed.
 
-    python3 convert-to-entries.py <vault> [--apply] [--remove-log]
+    python3 convert-to-entries.py <graph> [--apply] [--remove-log]
 
 Without --apply it prints what it would do and writes nothing.
 """
@@ -21,25 +21,25 @@ def slugify(t, taken):
         s = f"{base}-{n}"; n += 1
     taken.add(s); return s
 
-def git(vault, *a):
-    return subprocess.run(["git", "-C", str(vault), *a],
+def git(graph, *a):
+    return subprocess.run(["git", "-C", str(graph), *a],
                           capture_output=True, text=True).stdout.strip()
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("vault"); ap.add_argument("--apply", action="store_true")
+    ap.add_argument("graph"); ap.add_argument("--apply", action="store_true")
     ap.add_argument("--remove-log", action="store_true")
     a = ap.parse_args()
-    v = Path(a.vault).resolve()
+    v = Path(a.graph).resolve()
     if not v.is_dir(): sys.exit(f"not a directory: {v}")
 
     logs = sorted(v.glob("WORKLOG*.md"))
-    if not logs: sys.exit("no WORKLOG*.md here — already converted, or not a vault")
+    if not logs: sys.exit("no WORKLOG*.md here — already converted, or not a graph")
 
-    # 1. refuse on a dirty vault: another session may have uncommitted entries
+    # 1. refuse on a dirty graph: another session may have uncommitted entries
     dirty = git(v, "status", "--porcelain")
     if dirty:
-        sys.exit("REFUSING: vault has uncommitted changes. Another session may be "
+        sys.exit("REFUSING: graph has uncommitted changes. Another session may be "
                  "mid-write. Commit or coordinate first.\n" + dirty)
 
     # 2. parse
@@ -66,7 +66,7 @@ def main():
         print(f"    ... dry run, nothing written. Re-run with --apply")
         return
 
-    # 3. BACK UP: a commit plus a tarball outside the vault
+    # 3. BACK UP: a commit plus a tarball outside the graph
     stamp = time.strftime("%Y%m%d-%H%M%S")
     bdir = Path.home() / "backups" / "mdgraph-preconvert"; bdir.mkdir(parents=True, exist_ok=True)
     tar = bdir / f"{v.name}-{stamp}.tar.gz"
@@ -74,7 +74,7 @@ def main():
         t.add(v, arcname=v.name, filter=lambda ti: None if "/.git/" in ti.name else ti)
     print(f"  backup: {tar} ({tar.stat().st_size//1024} KB)")
     head = git(v, "rev-parse", "HEAD")
-    print(f"  vault HEAD before: {head}")
+    print(f"  graph HEAD before: {head}")
 
     # 4. write entries. A finished conversion is resumable: --apply prints "re-run with
     # --remove-log", so the second invocation must reach the removal step instead of

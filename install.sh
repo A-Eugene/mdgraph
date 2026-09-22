@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Claude Code: skill, hooks, and the host vault. Copies, never symlinks.
+# Claude Code: skill, hooks, and the host graph. Copies, never symlinks.
 #   PROJECTS  where repos live; the hooks glob "$PROJECTS/*/" (default /root/Projects)
-#   HOST      a plain-mode vault for work not about one repository (default $HOME/.mdgraph)
+#   HOST      a plain-mode graph for work not about one repository (default $HOME/.mdgraph)
 set -eu; cd "$(dirname "$0")"
 PROJECTS="${PROJECTS:-/root/Projects}"; HOST="${HOST:-$HOME/.mdgraph}"
 
@@ -26,8 +26,8 @@ for ev,script in want.items():
 json.dump(d,open(p,"w"),indent=2); print("  hooks registered in settings.json")
 PY
 
-# the host vault: plain mode, since $HOME is not a repository
+# the host graph: plain mode, since $HOME is not a repository
 mkdir -p "$HOST"
 REG=~/.claude/mdgraph-registry.txt
 grep -qs "^$(dirname "$HOST")	" "$REG" || printf '%s\tplain\t%s\t%s\n' "$(dirname "$HOST")" "$HOST" "$(date +%F)" >> "$REG"
-echo "installed: skill, 3 hooks (glob $PROJECTS/*/ and $HOME/), host vault $HOST, registry line"
+echo "installed: skill, 3 hooks (glob $PROJECTS/*/ and $HOME/), host graph $HOST, registry line"

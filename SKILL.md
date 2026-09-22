@@ -2,15 +2,19 @@
 name: mdgraph
 description: >-
   Durable memory for a repository — one markdown file per thing worth
-  remembering, linked by name, kept on a dedicated `mdgraph` branch. Use it
-  whenever something should outlive this session: a result and its numbers, a
-  question still open, a constraint learned the hard way, a decision and who
-  made it, a trap that cost time, a correction to an earlier entry, or a last
-  note before compacting context. Use it before proposing, pricing, or
-  shortlisting any option — a firm, a vendor, a library, a venue — since a
-  recorded constraint may already rule a candidate out. Use it when setting up
-  memory in a repo that has none. Reading an existing vault needs no skill:
-  grep it.
+  remembering, linked by name, kept on a dedicated `mdgraph` branch. Make sure
+  to load this skill whenever something should outlive the session: a result
+  and its numbers, a question still open, a constraint learned the hard way, a
+  decision and who made it, a trap that cost time, a correction to an earlier
+  entry, or a last note before context is compacted. Load it at the END of any
+  substantive task in a repository that has a graph, even when nobody asked you
+  to record anything — that is the moment the knowledge is lost. Load it also
+  before proposing, pricing or shortlisting any option — a firm, a vendor, a
+  library, a venue — since a recorded constraint may already rule a candidate
+  out, and before asserting anything about past work, because a compacted
+  session keeps its conclusions and drops the reasons behind them. Use it when
+  setting up memory in a repo that has none. Reading an existing graph needs no
+  skill: grep it.
 ---
 
 # mdgraph
@@ -33,7 +37,7 @@ Leave the conclusion to the reader.
 
 ## An entry
 
-Write one file per thing worth remembering, flat at the vault root. **The
+Write one file per thing worth remembering, flat at the graph root. **The
 filename is the identity and the link target**, so name it for the thing, not
 the date:
 
@@ -61,16 +65,16 @@ t=1.4 in-sample and 0.2 out. The burst is real. The direction is not.
   describe the commit, so this is the only durable one.
 
 **Frontmatter is what makes a file an entry.** A README or a scratch file at the
-vault root has no frontmatter, so no session indexes it. Nothing else marks the
+graph root has no frontmatter, so no session indexes it. Nothing else marks the
 boundary. There is no directory rule to violate, and there is no way to grow a
-second vault by accident.
+second graph by accident.
 
 Below the fields, write what happened. Then there are two optional lines, one
-pointing out of the vault and one pointing inside it:
+pointing out of the graph and one pointing inside it:
 
 - `- **Source:**` — where the evidence lives. It is a notebook, a repo file,
   a URL, or plainly "this entry" when the entry is all there is.
-- `- **Relates:** [[name]]` — another entry in this vault, by filename without
+- `- **Relates:** [[name]]` — another entry in this graph, by filename without
   the extension.
 
 **Write `[[name]]` only when an entry of that name exists.** A notebook, a
@@ -103,11 +107,11 @@ counts its referrers.
 
 A git repo gets an orphan branch `mdgraph`, checked out as a sibling worktree.
 Anything else gets a plain `<repo>/.mdgraph/` directory. This is not a
-preference. Ask the user only one question, ever: whether to keep a vault at
+preference. Ask the user only one question, ever: whether to keep a graph at
 all. Ask it at the first write, never on arrival.
 
 ```
-git switch --orphan mdgraph && git commit --allow-empty -m "vault" && git switch -
+git switch --orphan mdgraph && git commit --allow-empty -m "graph" && git switch -
 git worktree add ../<repo>-mdgraph mdgraph
 ```
 
@@ -119,23 +123,23 @@ git -C <repo> worktree list --porcelain |
   awk '/^worktree /{w=$2} /^branch refs\/heads\/mdgraph$/{print w; exit}'
 ```
 
-Commit with `git -C <vault> commit`. Push it like any branch. If a
-`WORKLOG.md` or entry files already exist at or above you, that is the vault. A
+Commit with `git -C <graph> commit`. Push it like any branch. If a
+`WORKLOG.md` or entry files already exist at or above you, that is the graph. A
 second one indexes under its own name and reads as a separate project, so the
 corpus splits with no error to notice.
 
 ## The registry
 
 The registry is `~/.claude/mdgraph-registry.txt`, tab-separated:
-`<project-abs-path> <mode> <vault-abs-path> <YYYY-MM-DD>`, with mode one of
+`<project-abs-path> <mode> <graph-abs-path> <YYYY-MM-DD>`, with mode one of
 `branch | plain | declined`. A line means the project was already asked, so
-nothing re-prompts. Fill the vault path only when the conventions above would
+nothing re-prompts. Fill the graph path only when the conventions above would
 not find it.
 
-**The registry answers "was this asked", not "what exists."** A vault created
-without a registry line is a normal vault. The hooks resolve through git, so
+**The registry answers "was this asked", not "what exists."** A graph created
+without a registry line is a normal graph. The hooks resolve through git, so
 they index it anyway. Never read the registry as an inventory. To list every
-vault, ask the disk:
+graph, ask the disk:
 
 ```bash
 # sibling worktrees on the mdgraph branch
@@ -143,12 +147,12 @@ for r in <projects>/*/; do
   git -C "$r" worktree list --porcelain 2>/dev/null |
     awk '/^worktree /{w=$2} /^branch refs\/heads\/mdgraph$/{print w; exit}'
 done | sort -u
-# plain-mode vaults
+# plain-mode graphs
 find <projects> -maxdepth 3 -type d -name .mdgraph
 ```
 
-Run both, not either: the first misses plain-mode vaults and the second misses
-every branch vault. Append a registry line for anything the scan finds that the
+Run both, not either: the first misses plain-mode graphs and the second misses
+every branch graph. Append a registry line for anything the scan finds that the
 registry lacks. Getting this wrong is quiet — you conclude that a project
 has no memory while the hooks index its entries in every session.
 
@@ -158,15 +162,15 @@ Reading uses three exact operations, with no similarity, no query layer, and
 no tooling:
 
 ```bash
-grep -rn "<term>" <vault>              # lexical
-grep -rl "\[\[<name>\]\]" <vault>      # structural: what references this
-grep -h "^description:" <vault>/*.md   # the whole index, on demand
+grep -rn "<term>" <graph>              # lexical
+grep -rl "\[\[<name>\]\]" <graph>      # structural: what references this
+grep -h "^description:" <graph>/*.md   # the whole index, on demand
 ```
 
-The SessionStart hook prints one line per vault on the host: name, entry
-count, path. It does not print contents, because a vault is memory for one
+The SessionStart hook prints one line per graph on the host: name, entry
+count, path. It does not print contents, because a graph is memory for one
 repository and a session outside that repository has no use for it. On entering
-a repository, read that vault's index yourself — the third command above — and
+a repository, read that graph's index yourself — the third command above — and
 you know what it holds. That read is what keeps a standing constraint in view.
 
 ## Housekeeping
