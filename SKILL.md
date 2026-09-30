@@ -1,45 +1,46 @@
 ---
 name: mdgraph
 description: >-
-  Durable memory for a repository — one markdown file per thing worth
-  remembering, linked by name, kept on a dedicated `mdgraph` branch. Make sure
-  to load this skill whenever something should outlive the session: a result
-  and its numbers, a question still open, a constraint learned the hard way, a
-  decision and who made it, a trap that cost time, a correction to an earlier
-  entry, or a last note before context is compacted. Load it at the END of any
+  Durable memory for a repository: one markdown file per thing worth
+  remembering, linked by name, kept on a dedicated `mdgraph` branch. Load this
+  skill whenever something should outlive the session: a result and its
+  numbers, a question still open, a constraint learned the hard way, a decision
+  and who made it, a trap that cost time, a correction to an earlier entry, or a
+  last note before the context is compacted. Load it at the END of any
   substantive task in a repository that has a graph, even when nobody asked you
-  to record anything — that is the moment the knowledge is lost. Load it also
-  before proposing, pricing or shortlisting any option — a firm, a vendor, a
-  library, a venue — since a recorded constraint may already rule a candidate
-  out, and before asserting anything about past work, because a compacted
-  session keeps its conclusions and drops the reasons behind them. Use it when
-  setting up memory in a repo that has none. Reading an existing graph needs no
+  to record anything, because that is the moment the knowledge would be lost.
+  Load it before you propose, price or shortlist any option (a firm, a vendor, a
+  library, a venue), since a recorded constraint may already rule a candidate
+  out. Load it before you assert anything about past work, because a compacted
+  session keeps its conclusions and loses the reasons behind them. Use it to set
+  up memory in a repository that has none. Reading an existing graph needs no
   skill: grep it.
 ---
 
 # mdgraph
 
 mdgraph is plain markdown that you write yourself. No model sits between a
-finding and its storage, so extraction loses nothing and a write costs nothing.
+finding and the file it lands in, so nothing is lost in extraction and a write
+costs nothing extra.
 
-**Entries are informative, never argumentative.** Record what happened with
-enough mechanism and number that a reader can draw their own conclusion. "p99
-went 4.2s → 11s: retries stacked behind the same lock" carries everything.
-"DEAD — do not re-attempt" is an opinion and does not belong. Never mark anything
-closed.
+**Entries record what happened. They do not argue.** Give enough mechanism and
+enough numbers that a reader can reach their own conclusion. "p99 went from
+4.2 s to 11 s because retries stacked up behind the same lock" carries
+everything. "DEAD, do not re-attempt" is an opinion, and it does not belong.
+Never mark anything as closed.
 
-A decision belongs only when you can name **who or what made it**: a stopping
-rule declared before the test ran, an operator's call, a date when something
-was adopted. Those are facts about the world. A session that reads a result and
-concludes that the work should stop does not observe a decision. It makes one.
-Record the number and the mechanism. Name the authority if there was one.
-Leave the conclusion to the reader.
+Record a decision only when you can name **who or what made it**: a stopping
+rule declared before the test ran, the operator's call, the date something was
+adopted. Those are facts about the world. When a session reads a result and
+concludes that the work should stop, it has not observed a decision. It has made
+one. So record the number and the mechanism, name the authority if there was
+one, and leave the conclusion to the reader.
 
-## An entry
+## What an entry looks like
 
-Write one file per thing worth remembering, flat at the graph root. **The
-filename is the identity and the link target**, so name it for the thing, not
-the date:
+Each thing worth remembering gets its own file, flat at the root of the graph.
+**The filename is the entry's identity and its link target**, so name it after
+the thing, not the date:
 
 ```markdown
 ---
@@ -55,130 +56,130 @@ t=1.4 in-sample and 0.2 out. The burst is real. The direction is not.
 - **Relates:** [[mgc-open-one-sided-commitment]]
 ```
 
-**There are two fields, and both are required.**
+**Both frontmatter fields are required.**
 
-- `description` — one line, written to be read on its own. This is the whole
-  index: every session gets every description, so it is the only part of the
-  entry that most readers will ever see. Say what you found, not what the
-  entry is about.
-- `date` — when you found it. File times do not survive a clone and git dates
-  describe the commit, so this is the only durable one.
+- `description` is one line that has to make sense on its own. It is the whole
+  index: sessions read the descriptions and little else, so for most readers it
+  is the entire entry. Say what you found, not what the entry is about.
+- `date` is when you found it. File times do not survive a clone, and git dates
+  describe the commit, so this is the only date that lasts.
 
 **Frontmatter is what makes a file an entry.** A README or a scratch file at the
-graph root has no frontmatter, so no session indexes it. Nothing else marks the
-boundary. There is no directory rule to violate, and there is no way to grow a
-second graph by accident.
+root of the graph has none, so nothing indexes it. That is the only boundary.
+There is no directory rule to break, and no way to start a second graph by
+accident.
 
-Below the fields, write what happened. Then there are two optional lines, one
-pointing out of the graph and one pointing inside it:
+Below the frontmatter, write what happened. Two optional lines can follow, one
+pointing out of the graph and one pointing within it:
 
-- `- **Source:**` — where the evidence lives. It is a notebook, a repo file,
-  a URL, or plainly "this entry" when the entry is all there is.
-- `- **Relates:** [[name]]` — another entry in this graph, by filename without
-  the extension.
+- `- **Source:**` says where the evidence lives: a notebook, a file in the
+  repository, a URL, or simply "this entry" when the entry is all there is.
+- `- **Relates:** [[name]]` names another entry in this graph, by its filename
+  without the extension.
 
-**Write `[[name]]` only when an entry of that name exists.** A notebook, a
-topic, or a concept that has no entry goes on `Source:` or in plain text,
-never in brackets. A session must be able to follow any bracket without
-checking it first. One bracket that does not resolve forces a session to check
-every other bracket too. Plain text costs nothing: the name is still greppable and still
-counts its referrers.
+**Write `[[name]]` only when an entry with that name exists.** A notebook, a
+topic or a concept with no entry of its own goes on the `Source:` line or in
+plain text, never in brackets. A reader has to be able to follow any bracket
+without checking it first, and a single bracket that leads nowhere means every
+other bracket has to be checked too. Plain text costs nothing: the name can
+still be grepped, and it still counts toward whatever refers to it.
 
 ## The rules
 
 1. **One entry, one file, written once.** Two sessions writing at the same time
-   touch different files, so there is nothing to collide. Corrections are new
-   entries that link the old one. The old entry stays as written. Do not edit an
-   entry to fix it: the earlier entry is what makes the correction legible. This
-   protects what the writer believed, not how the writer typed it. Fix these in
-   place: a bracket around a word that never named an entry, a broken field
-   name, a typo.
-   No claim changes, so there is nothing for a correction entry to record.
-2. **Write when a future session would otherwise repeat the work.** Write a
+   touch different files, so they cannot collide. A correction is a new entry
+   that links to the one it corrects, and the earlier entry stays exactly as it
+   was written: it is what makes the correction make sense. The rule protects
+   what the writer believed, not how they typed it, so a few things may be
+   fixed in place because no claim changes: brackets around a word that never
+   named an entry, a misspelled field name, a typo.
+2. **Write when a future session would otherwise repeat the work.** That means a
    result and its numbers, a dead end, an open question, a constraint found the
-   hard way, or a trap that cost an afternoon. Do not write progress narration
-   such as "refactored the parser".
-3. **Date everything, in the text.** Put it in `date:`. Put it in the prose
-   wherever a number is time-sensitive. Without a date, a session cannot tell
-   last week's result from last year's result. Staleness then becomes
-   invisible.
+   hard way, or a trap that cost an afternoon. Progress narration such as
+   "refactored the parser" does not qualify.
+3. **Date everything, in the text.** Put the date in `date:`, and put it in the
+   prose wherever a number depends on when it was measured. Without dates, a
+   session cannot tell last week's result from last year's, and nobody notices
+   when an entry has gone stale.
 
-## Storage
+## Where a graph lives
 
-A git repo gets an orphan branch `mdgraph`, checked out as a sibling worktree.
-Anything else gets a plain `<repo>/.mdgraph/` directory. This is not a
-preference. Ask the user only one question, ever: whether to keep a graph at
-all. Ask it at the first write, never on arrival.
+In a git repository, the graph lives on an orphan branch named `mdgraph`,
+checked out as a worktree next to the repository. Anywhere else, it is a plain
+`<repo>/.mdgraph/` directory. That choice is fixed, so the only question to ask
+the user is whether to keep a graph at all, and the time to ask is the first
+write, not the moment you arrive.
 
 ```
 git switch --orphan mdgraph && git commit --allow-empty -m "graph" && git switch -
 git worktree add ../<repo>-mdgraph mdgraph
 ```
 
-The worktree goes beside the repo, not inside it. Inside, it sits in an
-ignored path that `git clean -ffxd` removes. Find it by asking git, never by guessing a name:
+Put the worktree beside the repository, not inside it. Inside, it would sit in
+an ignored path, and `git clean -ffxd` would delete it. To find a graph, ask git
+rather than guessing the directory name:
 
 ```
 git -C <repo> worktree list --porcelain |
   awk '/^worktree /{w=$2} /^branch refs\/heads\/mdgraph$/{print w; exit}'
 ```
 
-Commit with `git -C <graph> commit`. Push it like any branch. If a
-`WORKLOG.md` or entry files already exist at or above you, that is the graph. A
-second one indexes under its own name and reads as a separate project, so the
-corpus splits with no error to notice.
+Commit with `git -C <graph> commit`, and push the branch like any other. If a
+`WORKLOG.md` or entry files already exist in your directory or above it, that is
+the graph. Starting a second one splits the memory in two: it gets indexed under
+its own name and reads as a separate project, and nothing reports an error.
 
 ## The registry
 
-The registry is `~/.claude/mdgraph-registry.txt`, tab-separated:
-`<project-abs-path> <mode> <graph-abs-path> <YYYY-MM-DD>`, with mode one of
-`branch | plain | declined`. A line means the project was already asked, so
-nothing re-prompts. Fill the graph path only when the conventions above would
-not find it.
+`~/.claude/mdgraph-registry.txt` is tab-separated:
+`<project-abs-path> <mode> <graph-abs-path> <YYYY-MM-DD>`, where mode is
+`branch`, `plain` or `declined`. A line means the project has already been
+asked, so nothing asks again. Fill in the graph path only when the conventions
+above would not find it.
 
-**The registry answers "was this asked", not "what exists."** A graph created
-without a registry line is a normal graph. The hooks resolve through git, so
-they index it anyway. Never read the registry as an inventory. To list every
-graph, ask the disk:
+**The registry answers "was this project asked?", not "what graphs exist?"** A
+graph created without a registry line is a normal graph, and the hooks index it
+anyway because they resolve through git. So never treat the registry as an
+inventory. To list every graph, look at the disk:
 
 ```bash
-# sibling worktrees on the mdgraph branch
+# worktrees on the mdgraph branch
 for r in <projects>/*/; do
   git -C "$r" worktree list --porcelain 2>/dev/null |
     awk '/^worktree /{w=$2} /^branch refs\/heads\/mdgraph$/{print w; exit}'
 done | sort -u
-# plain-mode graphs
+# plain graphs
 find <projects> -maxdepth 3 -type d -name .mdgraph
 ```
 
-Run both, not either: the first misses plain-mode graphs and the second misses
-every branch graph. Append a registry line for anything the scan finds that the
-registry lacks. Getting this wrong is quiet — you conclude that a project
-has no memory while the hooks index its entries in every session.
+Run both. The first misses plain graphs, and the second misses every branch
+graph. Add a registry line for anything the scan finds that the registry lacks.
+Getting this wrong fails silently: you conclude that a project has no memory
+while the hooks have been indexing its entries in every session.
 
 ## Reading
 
-Reading uses three exact operations, with no similarity, no query layer, and
-no tooling:
+Reading takes three exact operations. There is no similarity search, no query
+layer and no tooling:
 
 ```bash
-grep -rn "<term>" <graph>              # lexical
-grep -rl "\[\[<name>\]\]" <graph>      # structural: what references this
-grep -h "^description:" <graph>/*.md   # the whole index, on demand
+grep -rn "<term>" <graph>              # find a word
+grep -rl "\[\[<name>\]\]" <graph>      # find what links to an entry
+grep -h "^description:" <graph>/*.md   # the whole index
 ```
 
-The SessionStart hook prints one line per graph on the host: name, entry
-count, path. It does not print contents, because a graph is memory for one
-repository and a session outside that repository has no use for it. On entering
-a repository, read that graph's index yourself — the third command above — and
-you know what it holds. That read is what keeps a standing constraint in view.
+At the start of every session, a hook prints one line per graph on the host:
+its name, how many entries it has, and its path. It does not print any
+contents, because a graph is memory for one repository and a session working
+elsewhere has no use for it. When you start working in a repository, read that
+graph's index yourself with the third command. That read is what keeps a
+standing constraint in front of you.
 
 ## Housekeeping
 
-- If an entry is junk — a mis-fire, a duplicate, an entry about work that
-  never happened — delete the file. Not everything that you record is worth
-  keeping.
-- If a secret landed in an entry, redact the credential. Also rotate it. Git
-  history holds the old copy either way, so rotation is the real fix.
-- A repo that already keeps findings elsewhere keeps them there. Each repo gets one
-  home, not necessarily this one.
+- If an entry is junk (a misfire, a duplicate, an entry about work that never
+  happened), delete the file. Not everything recorded is worth keeping.
+- If a secret ends up in an entry, redact it and rotate it. Git history keeps
+  the old copy either way, so rotating is the real fix.
+- A repository that already keeps its findings somewhere else keeps them there.
+  Each repository needs one home for its memory, not necessarily this one.
