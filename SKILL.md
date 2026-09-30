@@ -58,9 +58,10 @@ t=1.4 in-sample and 0.2 out. The burst is real. The direction is not.
 
 **Both frontmatter fields are required.**
 
-- `description` is one line that has to make sense on its own. It is the whole
-  index: sessions read the descriptions and little else, so for most readers it
-  is the entire entry. Say what you found, not what the entry is about.
+- `description` is one sentence, under about 200 characters, that makes sense
+  on its own. It is the whole index: sessions read the descriptions and little
+  else, and every session that reads the index pays for every description. Say
+  what you found, not what the entry is about.
 - `date` is when you found it. File times do not survive a clone, and git dates
   describe the commit, so this is the only date that lasts.
 
@@ -69,8 +70,13 @@ root of the graph has none, so nothing indexes it. That is the only boundary.
 There is no directory rule to break, and no way to start a second graph by
 accident.
 
-Below the frontmatter, write what happened. Two optional lines can follow, one
-pointing out of the graph and one pointing within it:
+Below the frontmatter, write what happened. **The body holds everything a
+reader needs to reproduce the result or rule it out without you:** the setup,
+the parameters, the numbers, the mechanism, and what was tried and failed. A
+body costs nothing until someone opens it, so leave nothing out.
+
+Two optional lines can follow, one pointing out of the graph and one pointing
+within it:
 
 - `- **Source:**` says where the evidence lives: a notebook, a file in the
   repository, a URL, or simply "this entry" when the entry is all there is.
@@ -172,8 +178,11 @@ At the start of every session, a hook prints one line per graph on the host:
 its name, how many entries it has, and its path. It does not print any
 contents, because a graph is memory for one repository and a session working
 elsewhere has no use for it. When you start working in a repository, read that
-graph's index yourself with the third command. That read is what keeps a
-standing constraint in front of you.
+graph's index yourself with the third command. On a large graph, filter it for
+your topic first: `grep -h "^description:" <graph>/*.md | grep -i <topic>`.
+That read is what keeps a standing constraint in front of you. Until a session
+has read the index, the first write it makes in that repository is refused,
+once, so that the read happens before the change.
 
 ## Housekeeping
 

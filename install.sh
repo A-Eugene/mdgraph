@@ -8,7 +8,7 @@ PROJECTS="${PROJECTS:-/root/Projects}"; HOST="${HOST:-$HOME/.mdgraph}"
 mkdir -p ~/.claude/skills/mdgraph ~/.claude/hooks
 cp SKILL.md ~/.claude/skills/mdgraph/SKILL.md
 for h in hooks/mdgraph-*.sh; do
-  sed "s|/root/Projects/\*/|$PROJECTS/*/|g; s|/root/ |$HOME/ |g" "$h" > ~/.claude/hooks/"$(basename "$h")"
+  sed "s|/root/Projects/\*/|$PROJECTS/*/|g; s|/root/ |$HOME/ |g; s|:-/root/Projects}|:-$PROJECTS}|" "$h" > ~/.claude/hooks/"$(basename "$h")"
   chmod +x ~/.claude/hooks/"$(basename "$h")"
 done
 
@@ -17,12 +17,15 @@ python3 - "$HOME/.claude/settings.json" <<'PY'
 import json,sys,os
 p=sys.argv[1]; d=json.load(open(p)) if os.path.exists(p) else {}
 h=d.setdefault("hooks",{})
-want={"SessionStart":"mdgraph-index.sh","Stop":"mdgraph-nudge.sh"}
-for ev,script in want.items():
+want=[("SessionStart",None,"mdgraph-index.sh"),("Stop",None,"mdgraph-nudge.sh"),
+      ("PreToolUse","Edit|Write|MultiEdit|NotebookEdit|Bash|Grep","mdgraph-guard.sh")]
+for ev,matcher,script in want:
     cmd=os.path.expanduser(f"~/.claude/hooks/{script}")
     entries=h.setdefault(ev,[])
     if not any(cmd in x.get("command","") for e in entries for x in e.get("hooks",[])):
-        entries.append({"hooks":[{"type":"command","command":cmd}]})
+        e={"hooks":[{"type":"command","command":cmd}]}
+        if matcher: e["matcher"]=matcher
+        entries.append(e)
 json.dump(d,open(p,"w"),indent=2); print("  hooks registered in settings.json")
 PY
 
@@ -30,4 +33,4 @@ PY
 mkdir -p "$HOST"
 REG=~/.claude/mdgraph-registry.txt
 grep -qs "^$(dirname "$HOST")	" "$REG" || printf '%s\tplain\t%s\t%s\n' "$(dirname "$HOST")" "$HOST" "$(date +%F)" >> "$REG"
-echo "installed: skill, 3 hooks (glob $PROJECTS/*/ and $HOME/), host graph $HOST, registry line"
+echo "installed: skill, 4 hooks (glob $PROJECTS/*/ and $HOME/), host graph $HOST, registry line"

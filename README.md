@@ -97,27 +97,31 @@ along.
 ./install.sh
 ```
 
-This copies the skill to `~/.claude/skills/mdgraph/` and the three hook scripts
-to `~/.claude/hooks/`. It registers `mdgraph-index.sh` on SessionStart and
-`mdgraph-nudge.sh` on Stop in `~/.claude/settings.json`, leaving your other hooks
-alone. It also creates a plain host graph at `~/.mdgraph` for work that is not
+This copies the skill to `~/.claude/skills/mdgraph/` and the four hook scripts
+to `~/.claude/hooks/`. It registers `mdgraph-index.sh` on SessionStart,
+`mdgraph-nudge.sh` on Stop and `mdgraph-guard.sh` on PreToolUse in
+`~/.claude/settings.json`, leaving your other hooks alone. It also creates a plain host graph at `~/.mdgraph` for work that is not
 about one repository. The hooks look for repositories under `/root/Projects`, so
 set `PROJECTS` if yours are elsewhere.
 
-Files are copied, never symlinked. A skill's body is loaded only when a session
-calls for it, so add one line to your always-loaded agent instructions saying
-that the graph convention exists.
+Files are copied, never symlinked.
 
 ## The hooks
 
 A contract only binds a session that has loaded it, so the hooks handle what
 cannot be left to chance.
 
-- `mdgraph-index.sh` (SessionStart) prints one line per graph on the host: its
-  name, its entry count and its path, about 100 tokens in all. It prints no
-  contents, because a graph is memory for one repository, and a session that has
-  not entered that repository has no use for it. A session that does enter it
-  reads the index with `grep -h "^description:" <graph>/*.md`.
+- `mdgraph-index.sh` (SessionStart) prints the entry rules, then one line per
+  graph on the host: its name, its entry count, how many of its descriptions run
+  past 200 characters, and its path. About 500 tokens in all. The rules are
+  printed because a skill's body loads only when a session calls for it, and in
+  practice sessions write entries without ever loading it. No graph contents are
+  printed, because a graph is memory for one repository.
+- `mdgraph-guard.sh` (PreToolUse) makes a session read a graph's index before it
+  changes that graph's repository. The first touch of the repository gets a
+  notice, and the first write is refused until the session has searched the
+  graph's descriptions, once per repository per session. Writing to the graph
+  itself is never held.
 - `mdgraph-nudge.sh` (Stop) warns when the code has had more commits than the
   graph has had entries.
 - `mdgraph-resolve.sh` finds a repository's graph. The other two call it, and it
