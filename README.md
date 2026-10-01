@@ -76,6 +76,12 @@ grep -rl "\[\[<name>\]\]" <graph>      # find what links to an entry
 grep -h "^description:" <graph>/*.md   # the whole index
 ```
 
+The first command searches entry bodies as well as descriptions. The second
+finds the entries that correct an entry, since a correction links what it
+corrects. Claude Code cuts a command's output past 30,000 characters without
+warning, so a large graph's index is filtered for a topic rather than printed
+whole: `grep -h "^description:" <graph>/*.md | grep -i <topic>`.
+
 A query tool would not earn its keep. Walking the links returns very little,
 because most links point at entries nobody has written yet, and whatever a walk
 would find is already in the index or one `grep -rl` away.

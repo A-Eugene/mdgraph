@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SessionStart hook: the entry rules, then one line per graph on this host (name,
-# entry count, path, and how many descriptions run past 200 characters).
+# entry count, path, how many descriptions run past 200 characters, and whether
+# the index is too long to print whole).
 #
 # No graph contents. A graph is memory for ONE repository, and a session that has
 # not entered that repository has no use for them. A session that enters one
@@ -21,6 +22,9 @@ for repo in /root/ /root/Projects/*/; do
   long=$(grep -h '^description:' "$real"/*.md 2>/dev/null | awk 'length($0) > 213' | wc -l)
   extra=""; [ "$long" -eq 1 ] && extra=", 1 description over 200 characters"
   [ "$long" -gt 1 ] && extra=", $long descriptions over 200 characters"
+  # Claude Code shows 30,000 characters of a command's output by default
+  size=$(grep -h '^description:' "$real"/*.md 2>/dev/null | wc -c)
+  [ "$size" -gt 30000 ] && extra="$extra, index too long to print whole"
   out="$out  $(basename "$repo"): $n entries$extra, $real"$'\n'
 done
 [ -n "$out" ] || exit 0
@@ -28,8 +32,12 @@ cat <<'CARD'
 === mdgraph: durable memory for a repository, one markdown file per entry. The rules:
 - Before working in a repository with a graph, read its index:
     grep -h '^description:' <graph>/*.md
-  On a large graph, filter it for your topic first: ... | grep -i <topic>
-- Before any claim about past work, grep the graph.
+  A command's output past 30,000 characters is cut short without warning, so never print
+  an index marked too long below. Filter it for your topic: ... | grep -i <topic>
+- Before any claim about past work, grep the graph, entry bodies as well as descriptions:
+    grep -rli <term> <graph>
+- Before relying on an entry, find the later entries that correct it:
+    grep -rl '\[\[<name>\]\]' <graph>
 - Write an entry when a future session would otherwise repeat the work: a result and its
   numbers, a dead end, an open question, a constraint found the hard way, a trap that cost
   time. Progress narration is not an entry.

@@ -174,13 +174,18 @@ grep -rl "\[\[<name>\]\]" <graph>      # find what links to an entry
 grep -h "^description:" <graph>/*.md   # the whole index
 ```
 
+Before any claim about past work, search entry bodies with the first command,
+not only the index. Before relying on an entry, run the second command with its
+name: an entry that corrects it links it.
+
 At the start of every session, a hook prints one line per graph on the host:
 its name, how many entries it has, and its path. It does not print any
 contents, because a graph is memory for one repository and a session working
 elsewhere has no use for it. When you start working in a repository, read that
-graph's index yourself with the third command. On a large graph, filter it for
-your topic first: `grep -h "^description:" <graph>/*.md | grep -i <topic>`.
-That read is what keeps a standing constraint in front of you. Until a session
+graph's index yourself with the third command. Claude Code cuts a command's
+output past 30,000 characters without warning, and the startup line marks an
+index that long as too long to print whole. Filter such an index for your topic:
+`grep -h "^description:" <graph>/*.md | grep -i <topic>`. That read is what keeps a standing constraint in front of you. Until a session
 has read the index, the first write it makes in that repository is refused,
 once, so that the read happens before the change.
 

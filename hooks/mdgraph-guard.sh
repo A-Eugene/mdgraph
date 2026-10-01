@@ -76,9 +76,19 @@ if os.path.exists(mark(g, kind)):
 open(mark(g, kind), "w").close()
 
 n = sum(1 for f in os.listdir(g) if f.endswith(".md"))
-body = (f"{repo} has a memory graph at {g} ({n} entries). Read its index before changing "
-        f"this repository: grep -h '^description:' {g}/*.md . On a large graph, filter it "
-        f"for your topic first: grep -h '^description:' {g}/*.md | grep -i <topic> . A recorded "
+size = 0
+for f in os.listdir(g):
+    if f.endswith(".md"):
+        with open(os.path.join(g, f), errors="replace") as fh:
+            size += sum(len(l) for l in fh if l.startswith("description:"))
+if size > 30000:  # Claude Code shows 30,000 characters of a command's output by default
+    how = (f"Its index is {size:,} characters, more than one command's output shows, and the "
+           f"rest is cut without warning. Filter it for your topic: grep -h '^description:' "
+           f"{g}/*.md | grep -i <topic> .")
+else:
+    how = f"Read its index: grep -h '^description:' {g}/*.md ."
+body = (f"{repo} has a memory graph at {g} ({n} entries), to read before changing this "
+        f"repository. {how} Search entry bodies too: grep -rli <term> {g} . A recorded "
         f"constraint, dead end or open question may already cover what you are about to do.")
 out = {"hookEventName": "PreToolUse"}
 if mutating:
