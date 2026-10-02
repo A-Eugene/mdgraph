@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Claude Code: skill, hooks, and the host graph. Copies, never symlinks.
-#   PROJECTS  where repos live; the hooks glob "$PROJECTS/*/" (default /root/Projects)
+#   PROJECTS  where repos live, as <repo>/ or <repo>/<branch>/ (default /root/Projects)
 #   HOST      a plain-mode graph for work not about one repository (default $HOME/.mdgraph)
 set -eu; cd "$(dirname "$0")"
 PROJECTS="${PROJECTS:-/root/Projects}"; HOST="${HOST:-$HOME/.mdgraph}"
@@ -33,4 +33,4 @@ PY
 mkdir -p "$HOST"
 REG=~/.claude/mdgraph-registry.txt
 grep -qs "^$(dirname "$HOST")	" "$REG" || printf '%s\tplain\t%s\t%s\n' "$(dirname "$HOST")" "$HOST" "$(date +%F)" >> "$REG"
-echo "installed: skill, 4 hooks (glob $PROJECTS/*/ and $HOME/), host graph $HOST, registry line"
+echo "installed: skill, 4 hooks (repos under $PROJECTS, and $HOME/), host graph $HOST, registry line"

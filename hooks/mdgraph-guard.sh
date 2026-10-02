@@ -41,11 +41,20 @@ def graph_of(repo):
 
 
 def repo_of(path):
+    """The checkout holding path: $projects/<repo>, or $projects/<repo>/<branch> when a
+    repository keeps one checkout per branch."""
     p = os.path.realpath(path)
     if not p.startswith(projects + "/"):
         return None
-    name = p[len(projects) + 1:].split("/", 1)[0]
-    return os.path.join(projects, name) if name else None
+    parts = p[len(projects) + 1:].split("/")
+    if not parts[0]:
+        return None
+    top = os.path.join(projects, parts[0])
+    if not os.path.exists(os.path.join(top, ".git")) and len(parts) > 1:
+        nested = os.path.join(top, parts[1])
+        if os.path.exists(os.path.join(nested, ".git")):
+            return nested
+    return top
 
 
 # Reading a graph's index marks it read. A graph directory is itself a

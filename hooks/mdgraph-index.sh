@@ -10,8 +10,21 @@
 # The rules are printed here, not left to the skill, because a skill's body loads
 # only when a session calls for it, and most sessions that write entries never do.
 set -u
+projects="${MDGRAPH_PROJECTS:-/root/Projects}"
+# A repository sits at $projects/<repo>/, or keeps one checkout per branch under
+# $projects/<repo>/<branch>/. List the host, every top-level folder, and every
+# nested checkout.
+checkouts() {
+  printf '%s\n' /root/ "$projects"/*/
+  for g in "$projects"/*/*/.git; do [ -e "$g" ] && printf '%s\n' "${g%.git}"; done
+}
+# A repository's name: its folder under $projects, also for a nested checkout.
+name_of() {
+  local p; p=$(dirname "${1%/}")
+  if [ "$p" = "$projects" ] || [ "$p" = / ]; then basename "${1%/}"; else basename "$p"; fi
+}
 seen=""; out=""
-for repo in /root/ /root/Projects/*/; do
+while read -r repo; do
   real=$("$(dirname "$0")/mdgraph-resolve.sh" "$repo")
   [ -n "$real" ] && [ -d "$real" ] || continue
   case " $seen " in *" $real "*) continue ;; esac
@@ -25,8 +38,8 @@ for repo in /root/ /root/Projects/*/; do
   # Claude Code shows 30,000 characters of a command's output by default
   size=$(grep -h '^description:' "$real"/*.md 2>/dev/null | wc -c)
   [ "$size" -gt 30000 ] && extra="$extra, index too long to print whole"
-  out="$out  $(basename "$repo"): $n entries$extra, $real"$'\n'
-done
+  out="$out  $(name_of "$repo"): $n entries$extra, $real"$'\n'
+done < <(checkouts)
 [ -n "$out" ] || exit 0
 cat <<'CARD'
 === mdgraph: durable memory for a repository, one markdown file per entry. The rules:

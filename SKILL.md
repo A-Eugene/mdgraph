@@ -111,18 +111,28 @@ still be grepped, and it still counts toward whatever refers to it.
 ## Where a graph lives
 
 In a git repository, the graph lives on an orphan branch named `mdgraph`,
-checked out as a worktree next to the repository. Anywhere else, it is a plain
-`<repo>/.mdgraph/` directory. That choice is fixed, so the only question to ask
+checked out as a worktree in the repository's folder. A repository keeps every
+checkout in one folder, one subfolder per branch: `<repo>/main`,
+`<repo>/mdgraph`. Anywhere else, the graph is a plain `<repo>/.mdgraph/`
+directory. That choice is fixed, so the only question to ask
 the user is whether to keep a graph at all, and the time to ask is the first
 write, not the moment you arrive.
 
 ```
 git switch --orphan mdgraph && git commit --allow-empty -m "graph" && git switch -
-git worktree add ../<repo>-mdgraph mdgraph
+git worktree add ../mdgraph mdgraph
 ```
 
-Put the worktree beside the repository, not inside it. Inside, it would sit in
-an ignored path, and `git clean -ffxd` would delete it. To find a graph, ask git
+Run it from a checkout inside the repository's folder, such as `<repo>/main`. A
+repository that is still a single checkout moves into that layout first:
+
+```
+mv <repo> <repo>.tmp && mkdir <repo> && mv <repo>.tmp <repo>/main
+git -C <repo>/main worktree repair
+```
+
+Put the worktree beside the checkout, not inside it. Inside, it would sit in an
+ignored path, and `git clean -ffxd` would delete it. To find a graph, ask git
 rather than guessing the directory name:
 
 ```

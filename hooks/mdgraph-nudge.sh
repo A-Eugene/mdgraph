@@ -10,9 +10,22 @@
 # One nudge per repository, not per worktree: sibling checkouts of one repo share an
 # object store, so they are deduped on the common git dir.
 set -u
+projects="${MDGRAPH_PROJECTS:-/root/Projects}"
+# A repository sits at $projects/<repo>/, or keeps one checkout per branch under
+# $projects/<repo>/<branch>/. List the host, every top-level folder, and every
+# nested checkout.
+checkouts() {
+  printf '%s\n' /root/ "$projects"/*/
+  for g in "$projects"/*/*/.git; do [ -e "$g" ] && printf '%s\n' "${g%.git}"; done
+}
+# A repository's name: its folder under $projects, also for a nested checkout.
+name_of() {
+  local p; p=$(dirname "${1%/}")
+  if [ "$p" = "$projects" ] || [ "$p" = / ]; then basename "${1%/}"; else basename "$p"; fi
+}
 REG="${MDGRAPH_REGISTRY:-$HOME/.claude/mdgraph-registry.txt}"
 seen=""
-for repo in /root/ /root/Projects/*/; do
+while read -r repo; do
   common=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || continue
   case " $seen " in *" $common "*) continue ;; esac
   seen="$seen $common"
@@ -27,7 +40,7 @@ for repo in /root/ /root/Projects/*/; do
     grep -q "^${repo%/}	declined" "$REG" 2>/dev/null && continue
     recent=$(git -C "$repo" log --oneline --since="14 days ago" 2>/dev/null | wc -l)
     if [ "${recent:-0}" -ge 2 ]; then
-      echo "mdgraph: $(basename "${repo%/}") has no graph and $recent commit(s) in the last 14 days. Start one if a future session would otherwise repeat the work, or add a 'declined' line to $REG."
+      echo "mdgraph: $(name_of "$repo") has no graph and $recent commit(s) in the last 14 days. Start one if a future session would otherwise repeat the work, or add a 'declined' line to $REG."
     fi
     continue
   fi
@@ -41,7 +54,7 @@ for repo in /root/ /root/Projects/*/; do
   # land on the graph's own branch, so anything in the code repo is code movement.
   n=$(git -C "$repo" log --oneline --since="@$vt" 2>/dev/null | wc -l)
   if [ "${n:-0}" -gt 0 ]; then
-    echo "mdgraph: $(basename "$repo") has $n commit(s) touching code since the last graph entry. Write one if a future session would otherwise repeat the work."
+    echo "mdgraph: $(name_of "$repo") has $n commit(s) touching code since the last graph entry. Write one if a future session would otherwise repeat the work."
   fi
-done
+done < <(checkouts)
 exit 0
