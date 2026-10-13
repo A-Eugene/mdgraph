@@ -12,7 +12,7 @@ for h in hooks/mdgraph-*.sh; do
   chmod +x ~/.claude/hooks/"$(basename "$h")"
 done
 
-# register the two event hooks, leaving every other hook alone
+# register the three event hooks, leaving every other hook alone
 python3 - "$HOME/.claude/settings.json" <<'PY'
 import json,sys,os
 p=sys.argv[1]; d=json.load(open(p)) if os.path.exists(p) else {}

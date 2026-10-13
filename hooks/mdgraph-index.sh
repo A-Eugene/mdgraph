@@ -10,22 +10,13 @@
 # The rules are printed here, not left to the skill, because a skill's body loads
 # only when a session calls for it, and most sessions that write entries never do.
 set -u
-projects="${MDGRAPH_PROJECTS:-/root/Projects}"
-# A repository sits at $projects/<repo>/, or keeps one checkout per branch under
-# $projects/<repo>/<branch>/. List the host, every top-level folder, and every
-# nested checkout.
-checkouts() {
-  printf '%s\n' /root/ "$projects"/*/
-  for g in "$projects"/*/*/.git; do [ -e "$g" ] && printf '%s\n' "${g%.git}"; done
-}
-# A repository's name: its folder under $projects, also for a nested checkout.
-name_of() {
-  local p; p=$(dirname "${1%/}")
-  if [ "$p" = "$projects" ] || [ "$p" = / ]; then basename "${1%/}"; else basename "$p"; fi
-}
+# mdgraph_resolve, checkouts and name_of
+. "$(dirname "$(readlink -f "$0")")/mdgraph-resolve.sh"
+# mdgraph-guard.sh writes one mark per session and repository. Delete marks older than seven days.
+find /tmp/mdgraph-guard -type f -mtime +7 -delete 2>/dev/null
 seen=""; out=""
 while read -r repo; do
-  real=$("$(dirname "$0")/mdgraph-resolve.sh" "$repo")
+  real=$(mdgraph_resolve "$repo")
   [ -n "$real" ] && [ -d "$real" ] || continue
   case " $seen " in *" $real "*) continue ;; esac
   seen="$seen $real"

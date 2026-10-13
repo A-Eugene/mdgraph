@@ -1,28 +1,25 @@
 # mdgraph
 
-Durable memory for a repository, in plain markdown. Each thing worth remembering
-gets one file, entries link to each other by name, and the files live on a
-dedicated `mdgraph` branch beside the repository. [`SKILL.md`](SKILL.md) is the
-contract that sessions follow. This file explains why it is shaped the way it is.
+Memory for a repository, kept as plain markdown files.
 
-![architecture](architecture.svg)
+- One file per thing worth remembering.
+- Files link to each other by name.
+- The files live on their own `mdgraph` branch, checked out beside the repository.
 
-## Why not an extraction engine
+[`SKILL.md`](SKILL.md) holds the rules a session follows. This file explains the design.
 
-LLM memory engines read your text, pull out entities and relations, and store
-what they extracted. Writing becomes expensive: on my own corpus, about 26 tokens
-went out for every token stored. What survives is not your text either. A finding
-like "NFP killed at tick level, t=0.1–0.6, ZN-only" turns into triples that keep
-the nouns and drop the number, the threshold and the mechanism. And because the
-engine merges what it stores, the history is gone, so you cannot rebuild the log
-from the graph.
+![How a session, the graph, the repository and the hooks connect](architecture.svg)
 
-mdgraph turns each of those around. You decide where one entry ends and the next
-begins, your words never pass through a model, and git keeps the history.
+## Start here
 
-## The shape
+1. Run `./install.sh`.
+2. Open a Claude Code session. It prints the rules and the graphs on this host.
+3. Read a graph with the three commands under [Read a graph](#read-a-graph).
+4. Write an entry as one new file, in the format under [An entry](#an-entry).
 
-An entry is a markdown file whose frontmatter has two fields:
+## An entry
+
+A markdown file with two frontmatter fields:
 
 ```markdown
 ---
@@ -37,38 +34,35 @@ t=1.4 in-sample and 0.2 out. The burst itself is real. The direction is not.
 - **Relates:** [[mgc-open-one-sided-commitment]]
 ```
 
-**The filename is the identity and the link target.** Frontmatter is what makes
-a file an entry, so a README at the root of the graph is simply ignored, and
-there is no directory rule to break.
+| Part | Rule |
+|---|---|
+| Filename | It is the entry's identity and its link target. |
+| Frontmatter | It is what makes a file an entry. A README at the graph root has none, so it is ignored. There is no directory rule to break. |
+| `Source:` | Where the evidence lives outside the graph: a notebook, a file in the repository, a URL. |
+| `Relates: [[name]]` | Another entry inside the graph. |
+| `[[name]]` | Written only when that entry exists, so a reader can follow any bracket without checking it first. |
+| Anything else | A path or plain text. It can be grepped just as well. |
 
-**Two kinds of reference, pointing in two directions.** `Source:` says where the
-evidence lives, outside the graph: a notebook, a file in the repository, a URL.
-`Relates: [[name]]` names another entry inside the graph. A `[[name]]` is written
-only when that entry exists, so a reader can follow any bracket without checking
-it first. Anything else is a path or plain text, which can be grepped just as
-well.
+## The four rules of the design
 
-**No hierarchy.** Files sit side by side and refer to each other by name. A tree
-would give every entry exactly one home, and findings do not have one. An entry
-about a range-breakout test on gold during Tokyo hours belongs under four topics
-at once, and a tree would make you pick one and hide it from the other three.
-Links can point anywhere, and they are exact.
+**1. No hierarchy.** Files sit side by side and refer to each other by name.
+- A tree gives every entry exactly one home, and a finding does not have one.
+- Example: a range-breakout test on gold during Tokyo hours belongs under four topics at once. A tree makes you pick one and hides the entry from the other three.
+- Links can point anywhere, and they are exact.
 
-**No verdicts.** Entries carry numbers and mechanism, and they never pronounce a
-conclusion. Nothing is marked closed. A decision is recorded only when you can
-name who or what made it: a stopping rule declared before the test ran, or the
-operator's call. A session that reads a result and decides the work should stop
-has not observed a decision. It has made one.
+**2. No verdicts.** An entry carries numbers and mechanism. It never pronounces a conclusion.
+- Nothing is marked closed.
+- A decision is recorded only when you can name who or what made it: a stopping rule declared before the test ran, or the operator's call.
+- A session that reads a result and decides the work should stop has not observed a decision. It has made one.
 
-**A correction is a new entry** that links to the one it corrects. The earlier
-entry stays as written, because knowing what was believed is what makes the
-correction make sense. Two sessions writing at the same time touch different
-files, so they never collide.
+**3. A correction is a new entry.** It links to the entry it corrects.
+- The earlier entry stays as written. Knowing what was believed is what makes the correction make sense.
 
-## Reading
+**4. One file per entry.** Two sessions writing at the same time touch different files, so they never collide.
 
-Reading takes three exact operations. There are no embeddings, no similarity
-search and no query layer:
+## Read a graph
+
+Three exact commands. There are no embeddings, no similarity search and no query layer.
 
 ```bash
 grep -rn "<term>" <graph>              # find a word
@@ -76,26 +70,37 @@ grep -rl "\[\[<name>\]\]" <graph>      # find what links to an entry
 grep -h "^description:" <graph>/*.md   # the whole index
 ```
 
-The first command searches entry bodies as well as descriptions. The second
-finds the entries that correct an entry, since a correction links what it
-corrects. Claude Code cuts a command's output past 30,000 characters without
-warning, so a large graph's index is filtered for a topic rather than printed
-whole: `grep -h "^description:" <graph>/*.md | grep -i <topic>`.
+- The first command searches entry bodies as well as descriptions.
+- The second finds the entries that correct an entry, because a correction links what it corrects.
+- Claude Code cuts a command's output past 30,000 characters without warning. For a large graph, filter the index for a topic and never print it whole:
 
-A query tool would not earn its keep. Walking the links returns very little,
-because most links point at entries nobody has written yet, and whatever a walk
-would find is already in the index or one `grep -rl` away.
+```bash
+grep -h "^description:" <graph>/*.md | grep -i <topic>
+```
 
-## Finding the graphs
+A query tool would not earn its keep. Walking the links returns very little, because most links point at entries nobody has written yet. Whatever a walk would find is already in the index or one `grep -rl` away.
 
-A registry at `~/.claude/mdgraph-registry.txt` records which projects have been
-asked whether they want a graph. It is not a list of graphs. A graph created
-without a registry line works fine, because the hooks find graphs through git,
-not through that file. To list every graph, scan the disk for both kinds:
-worktrees on the `mdgraph` branch, and plain `.mdgraph/` directories. Treating
-the registry as the list fails silently when it is incomplete: you conclude that
-a project has no memory while the hooks have been indexing its entries all
-along.
+## Why not an extraction engine
+
+An LLM memory engine reads your text, pulls out entities and relations, and stores what it extracted.
+
+| Problem with extraction | What mdgraph does |
+|---|---|
+| Writing is expensive. On my own corpus, about 26 tokens went out for every token stored. | Your words never pass through a model. |
+| Your text does not survive. "NFP killed at tick level, t=0.1–0.6, ZN-only" becomes triples that keep the nouns and drop the number, the threshold and the mechanism. | You decide where one entry ends and the next begins. |
+| The engine merges what it stores, so the history is gone. You cannot rebuild the log from the graph. | git keeps the history. |
+
+## Find the graphs on a host
+
+Scan the disk for both kinds of graph:
+
+1. Worktrees on the `mdgraph` branch.
+2. Plain `.mdgraph/` directories.
+
+Do not use the registry as the list.
+- `~/.claude/mdgraph-registry.txt` records which projects have been asked whether they want a graph. It is not a list of graphs.
+- A graph created without a registry line works fine, because the hooks find graphs through git and not through that file.
+- Treating the registry as the list fails silently when it is incomplete. You conclude that a project has no memory while the hooks have been indexing its entries all along.
 
 ## Install
 
@@ -103,62 +108,71 @@ along.
 ./install.sh
 ```
 
-This copies the skill to `~/.claude/skills/mdgraph/` and the four hook scripts
-to `~/.claude/hooks/`. It registers `mdgraph-index.sh` on SessionStart,
-`mdgraph-nudge.sh` on Stop and `mdgraph-guard.sh` on PreToolUse in
-`~/.claude/settings.json`, leaving your other hooks alone. It also creates a plain host graph at `~/.mdgraph` for work that is not
-about one repository. The hooks look for repositories under `/root/Projects`, so
-set `PROJECTS` if yours are elsewhere.
+It does five things:
 
-Files are copied, never symlinked.
+1. Copies the skill to `~/.claude/skills/mdgraph/`.
+2. Copies the four hook scripts to `~/.claude/hooks/`.
+3. Registers three of them in `~/.claude/settings.json`, leaving your other hooks alone: `mdgraph-index.sh` on SessionStart, `mdgraph-nudge.sh` on Stop, `mdgraph-guard.sh` on PreToolUse.
+4. Creates a plain host graph at `~/.mdgraph` for work that is not about one repository.
+5. Adds the host graph's line to the registry.
+
+- The hooks look for repositories under `/root/Projects`. Set `PROJECTS` if yours are elsewhere.
+- Files are copied, never symlinked.
 
 ## The hooks
 
-A contract only binds a session that has loaded it, so the hooks handle what
-cannot be left to chance.
+A rule only binds a session that has loaded it. The hooks handle what cannot be left to chance.
 
-- `mdgraph-index.sh` (SessionStart) prints the entry rules, then one line per
-  graph on the host: its name, its entry count, how many of its descriptions run
-  past 200 characters, and its path. About 500 tokens in all. The rules are
-  printed because a skill's body loads only when a session calls for it, and in
-  practice sessions write entries without ever loading it. No graph contents are
-  printed, because a graph is memory for one repository.
-- `mdgraph-guard.sh` (PreToolUse) makes a session read a graph's index before it
-  changes that graph's repository. The first touch of the repository gets a
-  notice, and the first write is refused until the session has searched the
-  graph's descriptions, once per repository per session. Writing to the graph
-  itself is never held.
-- `mdgraph-nudge.sh` (Stop) warns when the code has had more commits than the
-  graph has had entries.
-- `mdgraph-resolve.sh` finds a repository's graph. The other two call it, and it
-  is not registered on its own.
+| Hook | Runs on | What it does |
+|---|---|---|
+| `mdgraph-index.sh` | SessionStart | Prints the entry rules, then one line per graph on the host. |
+| `mdgraph-guard.sh` | PreToolUse | Makes a session read a graph's index before it changes that graph's repository. |
+| `mdgraph-nudge.sh` | Stop | Warns when the code has had more commits than the graph has had entries. |
+| `mdgraph-resolve.sh` | not registered | Finds a repository's graph. The index and nudge hooks source it, and the guard runs it. |
 
-## Converting an existing graph
+**`mdgraph-index.sh`**
+- Each graph's line shows its name, its entry count, how many of its descriptions run past 200 characters, and its path.
+- The whole output is about 500 tokens.
+- It prints the rules because a skill's body loads only when a session calls for it, and in practice sessions write entries without ever loading it.
+- It prints no graph contents, because a graph is memory for one repository.
+- It deletes guard marks older than seven days.
 
-`scripts/convert-to-entries.py` splits a `WORKLOG.md` graph into one file per
-entry. It refuses to run on a graph with uncommitted changes, since another
-session may be halfway through writing. Before touching anything, it writes a
-tarball to `~/backups/mdgraph-preconvert/` and records the commit it started
-from. It reports every `## ` heading it did not convert, and it leaves the logs
-in place until you pass `--remove-log`.
+**`mdgraph-guard.sh`**
+- The first touch of the repository gets a notice.
+- The first write is refused until the session has searched the graph's descriptions.
+- Both happen once per repository per session.
+- Writing to the graph itself is never held.
+
+**`mdgraph-nudge.sh`**
+- For a repository with a graph, it counts the commits made since the last graph entry.
+- For a repository with no graph and two or more commits in the last 14 days, it suggests starting one. A `declined` line in the registry silences this for good.
+
+## Convert an existing graph
+
+`scripts/convert-to-entries.py` splits a `WORKLOG.md` graph into one file per entry.
 
 ```bash
-python3 scripts/convert-to-entries.py <graph>                    # dry run
-python3 scripts/convert-to-entries.py <graph> --apply            # write entries, keep logs
-python3 scripts/convert-to-entries.py <graph> --apply --remove-log
+python3 scripts/convert-to-entries.py <graph>                    # 1. dry run
+python3 scripts/convert-to-entries.py <graph> --apply            # 2. write entries, keep logs
+python3 scripts/convert-to-entries.py <graph> --apply --remove-log   # 3. remove the logs
 ```
 
-Keep `--apply` on the second run. Entries that were already written are
-recognised and skipped, so the run gets to the removal step. A file that exists
-with different content still makes it stop, so a real name collision can never
-be overwritten.
+What the script guarantees:
 
-**Commit before renaming anything.** New entry files are untracked until the
-first commit, so `git mv` on one fails with "not under version control". Grep
-for links to the old name first, commit, then rename.
+- It refuses to run on a graph with uncommitted changes, since another session may be halfway through writing.
+- Before touching anything, it writes a tarball to `~/backups/mdgraph-preconvert/` and records the commit it started from.
+- It reports every `## ` heading it did not convert.
+- It leaves the logs in place until you pass `--remove-log`.
+- Entries that were already written are recognised and skipped, so step 3 gets to the removal. Keep `--apply` on that run.
+- A file that exists with different content makes it stop, so a real name collision can never be overwritten.
 
-The index hook reads both formats, so a graph keeps working throughout the
-conversion.
+**Commit before renaming anything.** New entry files are untracked until the first commit, so `git mv` on one fails with "not under version control". The order:
+
+1. Grep for links to the old name.
+2. Commit.
+3. Rename.
+
+The index hook reads both formats, so a graph keeps working throughout the conversion.
 
 ## License
 

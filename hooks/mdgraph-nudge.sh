@@ -10,19 +10,8 @@
 # One nudge per repository, not per worktree: sibling checkouts of one repo share an
 # object store, so they are deduped on the common git dir.
 set -u
-projects="${MDGRAPH_PROJECTS:-/root/Projects}"
-# A repository sits at $projects/<repo>/, or keeps one checkout per branch under
-# $projects/<repo>/<branch>/. List the host, every top-level folder, and every
-# nested checkout.
-checkouts() {
-  printf '%s\n' /root/ "$projects"/*/
-  for g in "$projects"/*/*/.git; do [ -e "$g" ] && printf '%s\n' "${g%.git}"; done
-}
-# A repository's name: its folder under $projects, also for a nested checkout.
-name_of() {
-  local p; p=$(dirname "${1%/}")
-  if [ "$p" = "$projects" ] || [ "$p" = / ]; then basename "${1%/}"; else basename "$p"; fi
-}
+# mdgraph_resolve, checkouts and name_of
+. "$(dirname "$(readlink -f "$0")")/mdgraph-resolve.sh"
 REG="${MDGRAPH_REGISTRY:-$HOME/.claude/mdgraph-registry.txt}"
 seen=""
 while read -r repo; do
@@ -30,7 +19,7 @@ while read -r repo; do
   case " $seen " in *" $common "*) continue ;; esac
   seen="$seen $common"
 
-  real=$("$(dirname "$0")/mdgraph-resolve.sh" "$repo")
+  real=$(mdgraph_resolve "$repo")
   if [ -z "$real" ] || [ ! -d "$real" ]; then
     # A repo with real activity and NO graph was invisible here until 2026-09-22,
     # because this loop skipped anything the resolver could not place. That is the

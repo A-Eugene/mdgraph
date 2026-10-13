@@ -1,20 +1,18 @@
-graph LR
-  subgraph graph["&lt;repo&gt;/mdgraph  (orphan branch, worktree beside the checkouts)"]
+flowchart LR
+  S(["Claude session"])
+
+  subgraph G["The graph: one folder of .md files (branch mdgraph, or .mdgraph/)"]
     direction TB
-    E1["upload-queue-contention.md<br/><i>description + date</i>"]
-    E2["retry-backoff-reverted.md<br/><i>description + date</i>"]
-    E3["latency-budget.md<br/><i>description + date</i>"]
-    E1 -. "[[link]]" .- E2
-    E2 -. "[[link]]" .- E3
+    A["retry-backoff.md<br/>description, date, body"]
+    B["retry-backoff-reverted.md<br/>a correction: a new file"]
+    B -- "[[retry-backoff]]" --> A
   end
 
-  CODE[("repo<br/>notebooks, source, reports")]
-  HOOK["mdgraph-index.sh<br/>SessionStart"]
-  SESS["a Claude session"]
+  R[("The repository<br/>code, notebooks, reports")]
+  H["Hooks"]
 
-  E1 -->|"Source:"| CODE
-  E2 -->|"Source:"| CODE
-  graph -->|"every description"| HOOK
-  HOOK -->|"ambient context"| SESS
-  SESS -->|"grep -rn / grep -rl [[name]]"| graph
-  SESS -->|"writes one new file"| graph
+  S -- "reads with grep<br/>writes one new file per entry" --> G
+  A -- "Source: path" --> R
+  H -- "session start: rules and the list of graphs" --> S
+  H -- "first write to the repository: refused until the index is read" --> S
+  H -- "end of turn: warns when code moved and the graph did not" --> S
