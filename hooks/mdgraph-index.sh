@@ -52,7 +52,11 @@ cat <<'CARD'
 - Record what happened, never a verdict: no "DEAD", no "do not re-attempt", nothing marked
   closed. Name who or what made a decision, or leave the conclusion to the reader.
 - Never change an entry's claims. A correction is a new entry that links the earlier one
-  as [[name]]. Write [[name]] only for an entry that exists.
+  as [[name]], and the earlier entry's description gets the prefix
+  "Corrected by [[new-name]] (YYYY-MM-DD): ". A description that starts with it has a
+  correction: read that entry. Write [[name]] only for an entry that exists.
+- A typo, or a description shortened to under 200 characters with the same meaning, may
+  be fixed in place.
 - Commit with: git -C <graph> commit. The mdgraph skill has storage, registry and setup.
 === Graphs on this host:
 CARD

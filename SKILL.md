@@ -98,7 +98,16 @@ still be grepped, and it still counts toward whatever refers to it.
    was written: it is what makes the correction make sense. The rule protects
    what the writer believed, not how they typed it, so a few things may be
    fixed in place because no claim changes: brackets around a word that never
-   named an entry, a misspelled field name, a typo.
+   named an entry, a misspelled field name, a typo, and a description shortened
+   to fit the 200 characters while it still says the same thing.
+
+   **Mark the corrected entry where the index shows it.** The writer of a
+   correction also puts `Corrected by [[new-name]] (YYYY-MM-DD): ` at the start
+   of the earlier entry's description, and the same line at the top of its
+   body. Sessions read the index and little else, so a correction that only
+   links back is invisible to a session that never opens the earlier entry. The
+   marker is a pointer, not a claim, and it may push the description past 200
+   characters.
 2. **Write when a future session would otherwise repeat the work.** That means a
    result and its numbers, a dead end, an open question, a constraint found the
    hard way, or a trap that cost an afternoon. Progress narration such as
@@ -185,8 +194,10 @@ grep -h "^description:" <graph>/*.md   # the whole index
 ```
 
 Before any claim about past work, search entry bodies with the first command,
-not only the index. Before relying on an entry, run the second command with its
-name: an entry that corrects it links it.
+not only the index. A description that starts with `Corrected by [[name]]`
+has a correction: read that entry. Before relying on an entry, run the second
+command with its name as well, since an entry can be qualified by a later one
+without being marked corrected.
 
 At the start of every session, a hook prints one line per graph on the host:
 its name, how many entries it has, and its path. It does not print any

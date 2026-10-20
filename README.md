@@ -57,6 +57,8 @@ t=1.4 in-sample and 0.2 out. The burst itself is real. The direction is not.
 
 **3. A correction is a new entry.** It links to the entry it corrects.
 - The earlier entry stays as written. Knowing what was believed is what makes the correction make sense.
+- The earlier entry's description gets the prefix `Corrected by [[new-name]] (YYYY-MM-DD): `, so the index shows the correction.
+- A typo, or a description shortened to under 200 characters with the same meaning, may be fixed in place.
 
 **4. One file per entry.** Two sessions writing at the same time touch different files, so they never collide.
 
