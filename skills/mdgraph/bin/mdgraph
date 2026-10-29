@@ -391,7 +391,7 @@ check_instances() {
     if [ "$(branch_of "$g")" = mdgraph ]; then mode=branch
     elif git -C "$c" rev-parse --git-dir >/dev/null 2>&1; then mode=in-tree
     else mode=plain; fi
-    if [ "$fix" = 1 ]; then printf '%s\t%s\t\t%s\n' "$c" "$mode" "$(today)" >> "$REG"; fixed "$REG" "registered $c as $mode"
+    if [ "$fix" = 1 ]; then mkdir -p "$(dirname "$REG")"; printf '%s\t%s\t\t%s\n' "$c" "$mode" "$(today)" >> "$REG"; fixed "$REG" "registered $c as $mode"
     else report "$REG" "graph $g has no registry line"; fi
   done <<<"$graphs"
 }
