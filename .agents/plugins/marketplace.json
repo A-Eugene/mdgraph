@@ -1,0 +1,12 @@
+{
+  "name": "mdgraph",
+  "interface": { "displayName": "mdgraph" },
+  "plugins": [
+    {
+      "name": "mdgraph",
+      "source": { "source": "url", "url": "https://github.com/A-Eugene/mdgraph.git", "ref": "main" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Productivity"
+    }
+  ]
+}

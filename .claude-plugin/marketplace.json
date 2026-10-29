@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "mdgraph",
+  "description": "Durable memory for a repository, kept as plain markdown files.",
+  "owner": { "name": "A-Eugene", "url": "https://github.com/A-Eugene" },
+  "plugins": [
+    {
+      "name": "mdgraph",
+      "description": "One markdown file per finding, on its own git branch, read and written through one CLI.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

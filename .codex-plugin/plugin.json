@@ -1,0 +1,25 @@
+{
+  "name": "mdgraph",
+  "version": "2.0.0",
+  "description": "Durable memory for a repository: one markdown file per finding, on its own git branch, read and written through one CLI.",
+  "author": { "name": "A-Eugene", "url": "https://github.com/A-Eugene" },
+  "homepage": "https://github.com/A-Eugene/mdgraph",
+  "repository": "https://github.com/A-Eugene/mdgraph",
+  "license": "MIT",
+  "keywords": ["memory", "markdown", "notes", "git", "hooks"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "mdgraph",
+    "shortDescription": "Repository memory as markdown files",
+    "longDescription": "One markdown file per finding, linked by name, kept on a dedicated mdgraph git branch. Hooks print the rules at session start and hold the first write until the session reads the index.",
+    "developerName": "A-Eugene",
+    "category": "Productivity",
+    "capabilities": ["Instructions", "Lifecycle hooks"],
+    "websiteURL": "https://github.com/A-Eugene/mdgraph",
+    "defaultPrompt": [
+      "Read this repository's mdgraph index.",
+      "Record what we found in the mdgraph.",
+      "Check the mdgraph for broken entries."
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "mdgraph",
+  "version": "2.0.0",
+  "description": "Durable memory for a repository: one markdown file per finding, on its own git branch, read and written through one CLI.",
+  "author": { "name": "A-Eugene", "url": "https://github.com/A-Eugene" },
+  "homepage": "https://github.com/A-Eugene/mdgraph",
+  "repository": "https://github.com/A-Eugene/mdgraph",
+  "license": "MIT",
+  "keywords": ["memory", "markdown", "notes", "git", "hooks"]
+}

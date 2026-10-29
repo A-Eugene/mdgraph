@@ -1,36 +1,48 @@
 #!/usr/bin/env bash
-# Claude Code: skill, hooks, and the host graph. Copies, never symlinks.
-#   PROJECTS  where repos live, as <repo>/ or <repo>/<branch>/ (default /root/Projects)
-#   HOST      a plain-mode graph for work not about one repository (default $HOME/.mdgraph)
+# Installs mdgraph for Claude Code: the skill, the CLI, three hooks and the home graph.
+# Runs on Linux, macOS and Windows (Git Bash). Copies files, never symlinks.
+#   PROJECTS  where repositories live, as <repo>/ or <repo>/<branch>/ (default $HOME/Projects)
+#   HOST      a plain graph for work not about one repository (default $HOME/.mdgraph)
 set -eu; cd "$(dirname "$0")"
-PROJECTS="${PROJECTS:-/root/Projects}"; HOST="${HOST:-$HOME/.mdgraph}"
+HOST="${HOST:-$HOME/.mdgraph}"
+SKILL="$HOME/.claude/skills/mdgraph"
+BIN="$SKILL/bin/mdgraph"
+SETTINGS="$HOME/.claude/settings.json"
 
-mkdir -p ~/.claude/skills/mdgraph ~/.claude/hooks
-cp SKILL.md ~/.claude/skills/mdgraph/SKILL.md
-for h in hooks/mdgraph-*.sh; do
-  sed "s|/root/Projects/\*/|$PROJECTS/*/|g; s|/root/ |$HOME/ |g; s|:-/root/Projects}|:-$PROJECTS}|" "$h" > ~/.claude/hooks/"$(basename "$h")"
-  chmod +x ~/.claude/hooks/"$(basename "$h")"
+for need in git perl; do
+  command -v $need >/dev/null || { echo "install.sh: $need is required" >&2; exit 1; }
 done
+[ "${BASH_VERSINFO[0]}" -ge 4 ] || { echo "install.sh: bash 4 or later is required (macOS: brew install bash)" >&2; exit 1; }
 
-# register the three event hooks, leaving every other hook alone
-python3 - "$HOME/.claude/settings.json" <<'PY'
-import json,sys,os
-p=sys.argv[1]; d=json.load(open(p)) if os.path.exists(p) else {}
-h=d.setdefault("hooks",{})
-want=[("SessionStart",None,"mdgraph-index.sh"),("Stop",None,"mdgraph-nudge.sh"),
-      ("PreToolUse","Edit|Write|MultiEdit|NotebookEdit|Bash|Grep","mdgraph-guard.sh")]
-for ev,matcher,script in want:
-    cmd=os.path.expanduser(f"~/.claude/hooks/{script}")
-    entries=h.setdefault(ev,[])
-    if not any(cmd in x.get("command","") for e in entries for x in e.get("hooks",[])):
-        e={"hooks":[{"type":"command","command":cmd}]}
-        if matcher: e["matcher"]=matcher
-        entries.append(e)
-json.dump(d,open(p,"w"),indent=2); print("  hooks registered in settings.json")
-PY
+mkdir -p "$SKILL/bin"
+cp skills/mdgraph/SKILL.md "$SKILL/SKILL.md"
+if [ -n "${PROJECTS:-}" ]; then sed "s|:-\$HOME/Projects}|:-$PROJECTS}|" skills/mdgraph/bin/mdgraph > "$BIN"; else cp skills/mdgraph/bin/mdgraph "$BIN"; fi
+chmod +x "$BIN"
+rm -f "$HOME"/.claude/hooks/mdgraph-{guard,index,nudge,resolve}.sh
 
-# the host graph: plain mode, since $HOME is not a repository
+# Register the three hooks, replacing any earlier mdgraph hooks and leaving every other hook alone.
+[ -f "$SETTINGS" ] && cp "$SETTINGS" "$SETTINGS.bak-mdgraph"
+perl -MJSON::PP -e '
+  my ($path, $bin) = @ARGV;
+  my $json = JSON::PP->new->utf8->pretty->canonical->indent_length(2);
+  my $d = {};
+  if (-e $path) { local $/; open my $f, "<", $path or die "$path: $!"; $d = $json->decode(<$f>) }
+  my $h = $d->{hooks} //= {};
+  for my $event (keys %$h) {
+    for my $e (@{$h->{$event}}) {
+      $e->{hooks} = [grep { ($_->{command} // "") !~ m{mdgraph-(guard|index|nudge)\.sh|/mdgraph"? hook } } @{$e->{hooks} || []}];
+    }
+    $h->{$event} = [grep { @{$_->{hooks}} } @{$h->{$event}}];
+  }
+  my $hook = sub { {type => "command", shell => "bash", command => "\"$bin\" hook $_[0]"} };
+  push @{$h->{SessionStart}}, {hooks => [$hook->("index")]};
+  push @{$h->{Stop}}, {hooks => [$hook->("nudge")]};
+  push @{$h->{PreToolUse}}, {matcher => "Edit|Write|MultiEdit|NotebookEdit|Bash|Grep", hooks => [$hook->("guard")]};
+  open my $f, ">", $path or die "$path: $!"; print $f $json->encode($d);
+' "$SETTINGS" "$BIN"
+
+# The home graph: plain mode, since $HOME is not a repository.
 mkdir -p "$HOST"
-REG=~/.claude/mdgraph-registry.txt
+REG="$HOME/.claude/mdgraph-registry.txt"
 grep -qs "^$(dirname "$HOST")	" "$REG" || printf '%s\tplain\t%s\t%s\n' "$(dirname "$HOST")" "$HOST" "$(date +%F)" >> "$REG"
-echo "installed: skill, 4 hooks (repos under $PROJECTS, and $HOME/), host graph $HOST, registry line"
+echo "installed: skill and CLI in $SKILL, 3 hooks in $SETTINGS (backup at $SETTINGS.bak-mdgraph), home graph $HOST"

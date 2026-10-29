@@ -1,0 +1,625 @@
+#!/usr/bin/env bash
+# mdgraph: read, write, check and repair the memory graphs on this machine.
+# Runs on Linux, macOS (bash 4 or later) and Windows under Git Bash. Needs git and perl.
+set -u
+PROJECTS="${MDGRAPH_PROJECTS:-$HOME/Projects}"
+REG="${MDGRAPH_REGISTRY:-$HOME/.claude/mdgraph-registry.txt}"
+SELF=$(readlink -f "$0")
+MAX_DESCRIPTION=200
+SHOWN_OUTPUT=30000  # Claude Code shows 30,000 characters of a command's output
+MARKS="${TMPDIR:-/tmp}/mdgraph-guard"
+export LC_ALL=C.UTF-8  # awk and ${#s} count characters, not bytes
+
+usage() {
+  cat <<EOF
+usage: mdgraph [-g <repo|graph|name>] <command> [args]
+
+Without -g, the graph is the one for the current directory.
+
+  index [topic]              entry names and descriptions, filtered by an ERE topic
+  grep [grep flags] <term>   search entry bodies (case-insensitive ERE)
+  refs <name>                entries that link to [[name]]
+  new <name> <description>   write an entry dated today, body from stdin
+  correct <old> <new> [why]  mark <old> as corrected by <new>
+  commit [message]           commit the graph's changes
+  list                       every graph on this machine
+  check [--fix]              find broken entries and graphs (all graphs without -g).
+                             --fix repairs field names, multi-line descriptions, dates,
+                             [[links]] to no entry, missing Corrected by lines, entries in
+                             subfolders, stale worktrees and missing registry lines
+  resolve                    print the graph path
+  hook guard|index|nudge     Claude Code hooks
+EOF
+}
+
+die() { echo "mdgraph: $*" >&2; exit 1; }
+today() { date +%F; }
+if command -v cygpath >/dev/null 2>&1; then
+  to_unix() { case $1 in [A-Za-z]:*) cygpath -u "$1" ;; *) printf '%s\n' "$1" ;; esac; }
+else
+  to_unix() { printf '%s\n' "$1"; }
+fi
+
+# The registry: project path -> mode and graph path. The first line for a project wins.
+declare -A reg_mode reg_graph
+reg_projects=()
+if [ -f "$REG" ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    line=${line%$'\r'}
+    case "$line" in ''|'#'*) continue ;; esac
+    readarray -td $'\t' field < <(printf %s "$line")  # keeps empty fields, unlike read
+    p=${field[0]}
+    [ -n "$p" ] && [ -z "${reg_mode[$p]+x}" ] || continue
+    reg_projects+=("$p")
+    reg_mode[$p]=${field[1]:-}
+    reg_graph[$p]=${field[2]:-}
+  done < "$REG"
+fi
+
+checkouts() {
+  # Home, every folder under $PROJECTS, every nested checkout, every registered project.
+  printf '%s\n' "$HOME/" "$PROJECTS"/*/
+  for g in "$PROJECTS"/*/*/.git; do [ -e "$g" ] && printf '%s\n' "${g%.git}"; done
+  for p in "${reg_projects[@]}"; do [ -d "$p" ] && printf '%s/\n' "$p"; done
+}
+
+name_of() {
+  local p=${1%/} parent
+  parent=$(dirname "$p")
+  if [ "$(dirname "$parent")" = "$PROJECTS" ] && [ ! -e "$parent/.git" ]; then basename "$parent"; else basename "$p"; fi
+}
+
+resolve() {
+  # Registry first, then <repo>/.mdgraph, then the worktree on branch mdgraph.
+  local abs graph c common one="" first=""
+  [ -d "${1:-.}" ] || return 0
+  abs=$(cd "${1:-.}" 2>/dev/null && pwd -P) || return 0
+  if [ -n "${reg_mode[$abs]+x}" ]; then
+    [ "${reg_mode[$abs]}" = declined ] && return 0
+    graph=${reg_graph[$abs]}
+    [ -n "$graph" ] && [ -d "$graph" ] && { printf '%s\n' "$graph"; return 0; }
+  fi
+  [ -e "$abs/.mdgraph" ] && { readlink -f "$abs/.mdgraph"; return 0; }
+  if ! git -C "$abs" rev-parse --git-dir >/dev/null 2>&1; then
+    # A folder that keeps one checkout per branch of a single repository.
+    for c in "$abs"/*/.git; do
+      [ -e "$c" ] || continue
+      common=$(git -C "${c%/.git}" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+      [ -n "$one" ] || one=$common
+      [ "$one" = "$common" ] || return 0
+      [ -n "$first" ] || first=${c%/.git}
+    done
+    [ -n "$first" ] || return 0
+    abs=$first
+  fi
+  graph=$(git -C "$abs" worktree list --porcelain 2>/dev/null |
+    awk '/^worktree /{w=substr($0, 10)} /^branch refs\/heads\/mdgraph$/{print w; exit}')
+  [ -n "$graph" ] && to_unix "$graph"
+  return 0
+}
+
+branch_of() { git -C "$1" symbolic-ref --short -q HEAD 2>/dev/null; }
+
+is_graph() {
+  local p
+  { [ "$(basename "$1")" = .mdgraph ] || [ "$(branch_of "$1")" = mdgraph ]; } && return 0
+  for p in "${reg_projects[@]}"; do [ "${reg_graph[$p]}" = "$1" ] && return 0; done
+  return 1
+}
+
+graph_of() {
+  # A graph from a path inside a repository or graph, or from a repository name.
+  local a d g c
+  a=$(to_unix "${1:-.}")
+  if [ -d "$a" ]; then
+    d=$(cd "$a" && pwd -P)
+    is_graph "$d" && { echo "$d"; return 0; }
+    g=$(resolve "$d"); [ -n "$g" ] && { echo "$g"; return 0; }
+    while d=$(dirname "$d"); [ "$d" != / ] && [ "$d" != "$HOME" ]; do
+      g=$(resolve "$d"); [ -n "$g" ] && { echo "$g"; return 0; }
+    done
+    die "no graph for $a"
+  fi
+  while read -r c; do
+    [ "$(name_of "$c")" = "$a" ] || continue
+    g=$(resolve "$c"); [ -n "$g" ] && { echo "$g"; return 0; }
+  done < <(checkouts)
+  die "no graph named $a"
+}
+
+all_graphs() {
+  # One line per graph: <graph> TAB <checkout it was found from>.
+  local c g seen=" "
+  while read -r c; do
+    g=$(resolve "$c")
+    [ -n "$g" ] && [ -d "$g" ] || continue
+    case "$seen" in *" $g "*) continue ;; esac
+    seen="$seen$g "
+    printf '%s\t%s\n' "$g" "${c%/}"
+  done < <(checkouts)
+}
+
+index_lines() { (cd "$1" && grep -H '^description:' -- *.md 2>/dev/null | sed -E 's/\.md:description: ?/\t/'); }
+entry_count() { (cd "$1" && grep -l '^description:' -- *.md 2>/dev/null | wc -l); }
+frontmatter_end() { awk 'NR==1 && $0!="---"{exit} NR>1 && $0=="---"{print NR; exit}' "$1"; }
+
+cmd_index() {
+  local out; out=$(index_lines "$G")
+  if [ -n "${1:-}" ]; then grep -iE -- "$1" <<<"$out"; return 0; fi
+  [ ${#out} -gt $SHOWN_OUTPUT ] &&
+    die "the index of $G is ${#out} characters, more than one command's output shows. Filter it: $SELF -g $G index <topic>"
+  printf '%s\n' "$out"
+}
+
+cmd_grep() {
+  [ $# -gt 0 ] || die "usage: mdgraph grep [grep flags] <term>"
+  (cd "$G" && grep -niE "$@" -- *.md)
+}
+
+cmd_refs() {
+  [ $# -eq 1 ] || die "usage: mdgraph refs <name>"
+  (cd "$G" && grep -lF "[[$1]]" -- *.md | sed 's/\.md$//')
+}
+
+cmd_new() {
+  [ $# -eq 2 ] || die "usage: mdgraph new <name> <description>  (body on stdin)"
+  local name=$1 description=$2 f="$G/$1.md" body="" missing
+  [[ $name =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "name must be lowercase words joined by -: $name"
+  [ -e "$f" ] && die "$f already exists. A correction is a new entry: mdgraph correct"
+  [[ $description == *$'\n'* ]] && die "the description must be one line"
+  [ ${#description} -le $MAX_DESCRIPTION ] || die "the description is ${#description} characters, over $MAX_DESCRIPTION"
+  [ -t 0 ] || body=$(cat)
+  printf -- '---\ndescription: %s\ndate: %s\n---\n\n%s\n' "$description" "$(today)" "$body" > "$f"
+  missing=$(scan "$G" "$name.md" | awk -F'\t' '$2 == "link" { printf "[[%s]] ", $3 }')
+  if [ -n "$missing" ]; then
+    rm -f "$f"
+    die "no entry exists for ${missing% }. Put it on the Source: line or in plain text"
+  fi
+  echo "$f"
+}
+
+cmd_correct() {
+  [ $# -ge 2 ] || die "usage: mdgraph correct <old> <new> [why]"
+  local old="$G/$1.md" new=$2 why=${3:-} end prefix marker
+  [ -f "$old" ] || die "no entry $1"
+  [ -f "$G/$new.md" ] || die "no entry $new. Write it first with mdgraph new"
+  grep -qF "[[$1]]" "$G/$new.md" || die "$new must link [[$1]]"
+  grep -qF "description: Corrected by [[$new]]" "$old" && die "$1 is already marked as corrected by $new"
+  end=$(frontmatter_end "$old")
+  [ -n "$end" ] || die "$1 has no frontmatter. Run mdgraph check"
+  prefix="Corrected by [[$new]] ($(today)): "
+  marker="*${prefix%: }${why:+: $why}.*"
+  awk -v end="$end" -v prefix="$prefix" -v marker="$marker" '
+    NR < end && !done && /^description:/ { sub(/^description: */, ""); print "description: " prefix $0; done = 1; next }
+    { print }
+    NR == end { print ""; print marker }' "$old" > "$old.tmp" && mv "$old.tmp" "$old"
+  echo "$old"
+}
+
+cmd_commit() {
+  git -C "$G" rev-parse --git-dir >/dev/null 2>&1 || die "$G is not in a git repository"
+  local changed message
+  git -C "$G" add -A -- . || return 1
+  changed=$(git -C "$G" diff --cached --name-only --relative -- . | sed 's|.*/||; s/\.md$//' | sort -u | tr '\n' ' ')
+  [ -n "$changed" ] || { echo "mdgraph: nothing to commit in $G"; return 0; }
+  message=${1:-"entries: ${changed% }"}
+  git -C "$G" commit -q -m "$message" -- . && git -C "$G" log -1 --format='%h %s'
+}
+
+cmd_list() {
+  local g c n long size extra out
+  while IFS=$'\t' read -r g c; do
+    n=$(entry_count "$g")
+    [ "$n" -gt 0 ] || compgen -G "$g/WORKLOG*.md" >/dev/null || continue
+    out=$(index_lines "$g")
+    long=$(awk -F'\t' -v max=$MAX_DESCRIPTION '{ sub(/^Corrected by \[\[[^]]+\]\] \([0-9-]+\): /, "", $2); if (length($2) > max) n++ } END { print n+0 }' <<<"$out")
+    size=${#out}
+    extra=""
+    [ "$long" -eq 1 ] && extra=", 1 description over $MAX_DESCRIPTION characters"
+    [ "$long" -gt 1 ] && extra=", $long descriptions over $MAX_DESCRIPTION characters"
+    [ "$size" -gt $SHOWN_OUTPUT ] && extra="$extra, index too long to print whole"
+    echo "  $(name_of "$c"): $n entries$extra, $g"
+  done < <(all_graphs)
+}
+
+# --- check ---
+
+scan() {
+  # One line per problem in a graph's root entries: <file> TAB <kind> TAB <detail>.
+  local g=$1; shift
+  (cd "$g" || exit 0; [ $# -gt 0 ] || set -- *.md; [ -e "$1" ] || exit 0
+   awk -v max=$MAX_DESCRIPTION '
+    BEGIN { while ((("ls -- *.md 2>/dev/null") | getline n) > 0) { sub(/\.md$/, "", n); names[n] = 1 } }
+    function out(kind, detail) { printf "%s\t%s\t%s\n", file, kind, detail }
+    function finish(   plain, corrector, l) {
+      if (file == "") return
+      if (!fm) { if (bare) out("nofm", ""); return }
+      if (!end) { out("unclosed", ""); return }
+      if (badcase) out("fieldcase", "")
+      if (ndesc == 0) out("nodesc", "")
+      else if (ndesc > 1) out("multidesc", ndesc)
+      else if (desc == "" || desc ~ /^[>|][-+]?$/) out("folded", "")
+      else {
+        plain = desc; corrector = ""
+        if (match(plain, /^Corrected by \[\[[^]]+\]\] \([0-9-]+\): /)) {
+          corrector = substr(plain, 16, index(plain, "]]") - 16)
+          plain = substr(plain, RLENGTH + 1)
+        }
+        if (length(plain) > max) out("long", length(plain))
+        if (corrector != "" && index(first, "[[" corrector "]]") == 0) out("nomarker", corrector)
+      }
+      if (ndate == 0) out("nodate", "")
+      else if (date !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) out("baddate", date)
+      for (l in links) if (!(l in names)) out("link", l)
+    }
+    FNR == 1 {
+      finish(); file = FILENAME; fm = ($0 == "---"); end = ndesc = ndate = badcase = bare = code = 0
+      desc = date = first = ""; delete links
+      if (fm) next
+    }
+    fm && !end {
+      if ($0 == "---") { end = FNR; next }
+      key = tolower($0)
+      if (key ~ /^description *:/) {
+        if ($0 !~ /^description:/) badcase = 1
+        if (++ndesc == 1) { desc = $0; sub(/^[^:]*: */, "", desc) }
+      }
+      if (key ~ /^date *:/) {
+        if ($0 !~ /^date:/) badcase = 1
+        if (++ndate == 1) { date = $0; sub(/^[^:]*: */, "", date); gsub(/^"|"$/, "", date) }
+      }
+    }
+    !fm && /^description:/ { bare = 1 }
+    end && first == "" && $0 !~ /^[ \t]*$/ { first = $0 }
+    /^```/ { code = !code; next }
+    !code {
+      line = $0; gsub(/`[^`]*`/, "", line)
+      while (match(line, /\[\[[^]]+\]\]/)) { links[substr(line, RSTART + 2, RLENGTH - 4)] = 1; line = substr(line, RSTART + RLENGTH) }
+    }
+    END { finish() }' "$@")
+}
+
+problems=0
+report() { echo "$1: $2"; problems=$((problems + 1)); }
+fixed() { echo "$1: fixed: $2"; }
+
+fix_entry() {
+  # Repairs one problem that needs no judgement. Prints nothing and fails when it cannot.
+  local g=$1 f="$1/$2" kind=$3 detail=$4 end value candidate content
+  end=$(frontmatter_end "$f")
+  case $kind in
+    fieldcase)
+      sed -i -E "2,$((end - 1))s/^(description|date) *:/\L\1:/I" "$f"
+      fixed "$f" "field names spelled description: and date:" ;;
+    folded)
+      awk -v end="$end" '
+        NR < end && /^description: *([>|][-+]?)? *$/ { collect = 1; text = ""; next }
+        collect && NR < end && /^[ \t]/ { sub(/^[ \t]+/, ""); text = text (text == "" ? "" : " ") $0; next }
+        collect { print "description: " text; collect = 0 }
+        { print }' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+      fixed "$f" "description joined onto one line" ;;
+    nodate)
+      value=$(git -C "$g" log --diff-filter=A --follow --format=%as -- "$2" 2>/dev/null | tail -1)
+      [ -n "$value" ] && content="the day the file was first committed" ||
+        { value=$(date -r "$f" +%F); content="the file's modification day, since the graph has no git history for it"; }
+      sed -i "${end}i date: $value" "$f"
+      fixed "$f" "added date $value, $content" ;;
+    baddate)
+      value=$(date -d "$detail" +%F 2>/dev/null) || return 1
+      sed -i "2,$((end - 1))s/^date:.*/date: $value/" "$f"
+      fixed "$f" "date $detail written as $value" ;;
+    link)
+      candidate=$(sed -E 's/[|#].*//; s/\.md$//' <<<"$detail" | tr 'A-Z ' 'a-z-')
+      [ -f "$g/$candidate.md" ] && value="[[$candidate]]" || value=$detail
+      content=$(<"$f"); printf '%s\n' "${content//"[[$detail]]"/"$value"}" > "$f"
+      fixed "$f" "[[$detail]] written as $value" ;;
+    nomarker)
+      value=$(sed -n "2,$((end - 1))p" "$f" | grep -m1 -oE '^description: Corrected by \[\[[^]]+\]\] \([0-9-]+\)' | sed 's/^description: //')
+      sed -i "${end}a\\\\n*$value.*" "$f"
+      fixed "$f" "added the Corrected by line at the top of the body" ;;
+    *) return 1 ;;
+  esac
+}
+
+describe() {
+  case $1 in
+    nofm) echo "has a description: line but no --- frontmatter, so the index skips it" ;;
+    unclosed) echo "frontmatter is never closed with ---" ;;
+    fieldcase) echo "a field name is not spelled description: or date:" ;;
+    nodesc) echo "has no description: field" ;;
+    multidesc) echo "has $2 description: fields" ;;
+    folded) echo "description spans several lines, so the index shows only its first" ;;
+    long) echo "description is $2 characters, over $MAX_DESCRIPTION. Shorten it in place with the same meaning" ;;
+    nodate) echo "has no date: field" ;;
+    baddate) echo "date '$2' is not YYYY-MM-DD" ;;
+    link) echo "[[$2]] names no entry" ;;
+    nomarker) echo "description says Corrected by [[$2]] but the body does not start with that line" ;;
+  esac
+}
+
+check_graph() {
+  local g=$1 fix=$2 f file kind detail
+  while read -r f; do
+    [ "$(head -1 "$f")" = --- ] || continue
+    if [ "$fix" = 1 ] && [ ! -e "$g/$(basename "$f")" ]; then mv "$f" "$g/"; fixed "$f" "moved to the graph root"
+    else report "$f" "entry is in a subfolder, so the index skips it"; fi
+  done < <(find "$g" -mindepth 2 -name '*.md' -not -path '*/.git/*' -not -path '*/.*/*')
+  while IFS=$'\t' read -r file kind detail; do
+    [ "$fix" = 1 ] && fix_entry "$g" "$file" "$kind" "$detail" && continue
+    report "$g/$file" "$(describe "$kind" "$detail")"
+  done < <(scan "$g")
+  if [ "$(branch_of "$g")" = mdgraph ] && [ -n "$(git -C "$g" status --porcelain)" ]; then
+    report "$g" "has uncommitted changes: $(git -C "$g" status --porcelain | sed 's/^.. //' | tr '\n' ' ')"
+  fi
+}
+
+check_instances() {
+  local fix=$1 graphs=$2 p m g c common seen=" " registered=" " dest mode
+  for p in "${reg_projects[@]}"; do
+    m=${reg_mode[$p]}
+    [ -d "$p" ] || { report "$REG" "$p is registered but does not exist"; continue; }
+    [ "$m" = declined ] && continue
+    [ -n "${reg_graph[$p]}" ] && [ ! -d "${reg_graph[$p]}" ] && report "$REG" "graph ${reg_graph[$p]} for $p does not exist"
+    g=$(resolve "$p")
+    if [ -z "$g" ]; then report "$REG" "$p is registered as $m but no graph resolves for it"; continue; fi
+    registered="$registered$g "
+    [ "$m" = branch ] && [ "$(branch_of "$g")" != mdgraph ] &&
+      report "$g" "registered as branch but its checkout is on '$(branch_of "$g")', not mdgraph"
+  done
+  while read -r c; do
+    common=$(git -C "$c" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || continue
+    case "$seen" in *" $common "*) continue ;; esac
+    seen="$seen$common "
+    c=${c%/}
+    if git -C "$c" worktree list --porcelain | grep -q '^prunable'; then
+      if [ "$fix" = 1 ]; then git -C "$c" worktree prune; fixed "$c" "pruned worktrees whose folders are gone"
+      else report "$c" "has worktrees whose folders are gone"; fi
+    fi
+    if [ -z "$(resolve "$c")" ] && git -C "$c" show-ref -q --verify refs/heads/mdgraph; then
+      dest="$(dirname "$c")/mdgraph"
+      if [ "$fix" = 1 ] && [ "$(dirname "$(dirname "$c")")" = "$PROJECTS" ] && [ ! -e "$dest" ]; then
+        git -C "$c" worktree add -q "$dest" mdgraph && fixed "$c" "checked out branch mdgraph at $dest"
+      else
+        report "$c" "has an mdgraph branch with no worktree. Check it out beside the checkout: git -C $c worktree add <repo folder>/mdgraph mdgraph"
+      fi
+    fi
+    [ -e "$c/.mdgraph" ] && git -C "$c" show-ref -q --verify refs/heads/mdgraph &&
+      report "$c" "has both .mdgraph/ and an mdgraph branch, so its memory is split in two"
+  done < <(checkouts)
+  while IFS=$'\t' read -r g c; do
+    case "$registered" in *" $g "*) continue ;; esac
+    if [ "$(branch_of "$g")" = mdgraph ]; then mode=branch
+    elif git -C "$c" rev-parse --git-dir >/dev/null 2>&1; then mode=in-tree
+    else mode=plain; fi
+    if [ "$fix" = 1 ]; then printf '%s\t%s\t\t%s\n' "$c" "$mode" "$(today)" >> "$REG"; fixed "$REG" "registered $c as $mode"
+    else report "$REG" "graph $g has no registry line"; fi
+  done <<<"$graphs"
+}
+
+cmd_check() {
+  local fix=0 graphs g c
+  [ "${1:-}" = --fix ] && fix=1
+  if [ -n "$G" ]; then
+    check_graph "$G" $fix
+  else
+    graphs=$(all_graphs)
+    while IFS=$'\t' read -r g c; do check_graph "$g" $fix; done <<<"$graphs"
+    check_instances $fix "$graphs"
+  fi
+  if [ $problems -gt 0 ]; then
+    echo "mdgraph: $problems problem(s) left$([ $fix = 0 ] && echo ". mdgraph check --fix repairs the kinds listed under check in mdgraph --help")"
+    return 1
+  fi
+  echo "mdgraph: no problems left"
+}
+
+# --- hooks ---
+
+hook_index() {
+  # SessionStart: the entry rules, then one line per graph on this machine.
+  local graphs
+  find "$MARKS" -type f -mtime +7 -delete 2>/dev/null
+  graphs=$(cmd_list)
+  [ -n "$graphs" ] || return 0
+  cat <<CARD
+=== mdgraph: durable memory for a repository, one markdown file per entry. The rules:
+- The CLI is $SELF. -g <repo, graph path or name> picks a graph. Without -g it uses the
+  current directory's graph.
+- Before working in a repository with a graph, read its index: mdgraph -g <repo> index
+  An index marked too long below must be filtered: mdgraph -g <repo> index <topic>
+- Before any claim about past work, search entry bodies too: mdgraph -g <repo> grep <term>
+- Before relying on an entry, find the later entries that correct it: mdgraph -g <repo> refs <name>
+- Write an entry when a future session would otherwise repeat the work: a result and its
+  numbers, a dead end, an open question, a constraint found the hard way, a trap that cost
+  time. Progress narration is not an entry.
+- Write one with: mdgraph -g <repo> new <name> "<description>" <<'EOF' ... EOF
+  It makes one file at the graph root, named for the thing and dated today. The description
+  is one sentence under 200 characters that says what you found.
+- The body holds everything needed to reproduce the result or rule it out without you: the
+  setup, the parameters, the numbers, the mechanism, what was tried and failed.
+- Record what happened, never a verdict: no "DEAD", no "do not re-attempt", nothing marked
+  closed. Name who or what made a decision, or leave the conclusion to the reader.
+- Never change an entry's claims. A correction is a new entry that links the earlier one as
+  [[name]]. Then run: mdgraph -g <repo> correct <old> <new> "<what changed>"
+  A description that starts with "Corrected by [[name]]" has a correction: read that entry.
+  Write [[name]] only for an entry that exists.
+- A typo, or a description shortened to under 200 characters with the same meaning, may
+  be fixed in place.
+- Commit with: mdgraph -g <repo> commit. Repair broken entries and graphs with: mdgraph check --fix
+=== Graphs on this machine:
+CARD
+  printf '%s\n' "$graphs"
+}
+
+hook_nudge() {
+  # Stop: Codex needs JSON from this event, so its plain-text warnings become a systemMessage.
+  local payload="" out
+  [ -t 0 ] || payload=$(cat)
+  out=$(nudge_lines)
+  if [[ $payload == *'"turn_id"'* ]]; then
+    [ -n "$out" ] && perl -MJSON::PP -e 'print encode_json({systemMessage => $ARGV[0]}), "\n"' "$out"
+  else
+    [ -n "$out" ] && printf '%s\n' "$out"
+  fi
+  return 0
+}
+
+nudge_lines() {
+  # Warn when code moved but the graph did not, once per repository.
+  local repo common seen=" " g recent vt n
+  while read -r repo; do
+    common=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || continue
+    case "$seen" in *" $common "*) continue ;; esac
+    seen="$seen$common "
+    g=$(resolve "$repo")
+    if [ -z "$g" ] || [ ! -d "$g" ]; then
+      [ "${reg_mode[${repo%/}]:-}" = declined ] && continue
+      recent=$(git -C "$repo" log --oneline --since="14 days ago" 2>/dev/null | wc -l)
+      [ "${recent:-0}" -ge 2 ] &&
+        echo "mdgraph: $(name_of "$repo") has no graph and $recent commit(s) in the last 14 days. Start one if a future session would otherwise repeat the work, or add a 'declined' line to $REG."
+      continue
+    fi
+    # Asked of the graph's own repository: on a graph branch the code repo never sees its commits.
+    vt=$(git -C "$g" log -1 --format=%ct -- . 2>/dev/null)
+    [ -n "$vt" ] || continue
+    n=$(git -C "$repo" log --oneline --since="@$vt" 2>/dev/null | wc -l)
+    [ "${n:-0}" -gt 0 ] &&
+      echo "mdgraph: $(name_of "$repo") has $n commit(s) touching code since the last graph entry. Write one if a future session would otherwise repeat the work."
+  done < <(checkouts)
+  return 0
+}
+
+repo_of() {
+  # The checkout holding a path: $PROJECTS/<repo>, or $PROJECTS/<repo>/<branch>.
+  local p rest top second
+  p=$(realpath -m "$1")
+  case "$p" in "$PROJECTS"/?*) ;; *) return 1 ;; esac
+  rest=${p#"$PROJECTS"/}
+  top="$PROJECTS/${rest%%/*}"
+  if [ ! -e "$top/.git" ] && [[ $rest == */* ]]; then
+    rest=${rest#*/}
+    second="$top/${rest%%/*}"
+    [ -e "$second/.git" ] && { echo "$second"; return 0; }
+  fi
+  echo "$top"
+}
+
+hook_json() {
+  # hook_json deny <reason> | hook_json context <text>
+  perl -MJSON::PP -e '
+    my ($kind, $text) = @ARGV;
+    my %out = (hookEventName => "PreToolUse");
+    if ($kind eq "deny") { $out{permissionDecision} = "deny"; $out{permissionDecisionReason} = $text }
+    else { $out{additionalContext} = $text }
+    print JSON::PP->new->canonical->encode({hookSpecificOutput => \%out}), "\n"' "$1" "$2"
+}
+
+hook_guard() {
+  # PreToolUse: the first write into a repository with a graph is refused until the session
+  # has read the graph's index, once per session per repository.
+  local tool sid cwd pattern cmd p rp r repo="" g n kind mutating=0 reading=0 how body
+  local -a raw=() paths=()
+  # Fields, then every path the tool names, NUL-separated.
+  readarray -td '' raw < <(perl -MJSON::PP -0777 -ne '
+    my $d = eval { JSON::PP->new->utf8->decode($_) } or exit;
+    my $t = ref $d->{tool_input} eq "HASH" ? $d->{tool_input} : {};
+    my $cmd = $t->{command} // "";
+    print join("\0", $d->{tool_name} // "", $d->{session_id} // "nosession", $d->{cwd} // "",
+               $t->{pattern} // "", $cmd), "\0";
+    print "$_\0" for grep { defined && !ref } @$t{qw(file_path notebook_path path)};
+    if (($d->{tool_name} // "") eq "Bash") {
+      print "$1\0" while $cmd =~ m{(?<![\w.-])((?:/|[A-Za-z]:[\\/])[^\s\x27"`;|&<>()]+)}g;
+    }
+    if (($d->{tool_name} // "") eq "apply_patch") {  # Codex sends every file edit as one patch
+      my $cwd = $d->{cwd} // ".";
+      while ($cmd =~ m{^\*\*\* (?:(?:Add|Update|Delete) File|Move to): (.+?)\s*$}mg) {
+        print $1 =~ m{^(?:/|[A-Za-z]:)} ? "$1\0" : "$cwd/$1\0";
+      }
+    }')
+  [ ${#raw[@]} -ge 5 ] && [ -n "${raw[0]}" ] || return 0
+  tool=${raw[0]}; sid=${raw[1]//[^A-Za-z0-9_-]/}; cwd=$(to_unix "${raw[2]}"); pattern=${raw[3]}; cmd=${raw[4]}
+  for p in "${raw[@]:5}"; do paths+=("$(to_unix "$p")"); done
+  mkdir -p "$MARKS"
+  mark() { echo "$MARKS/$sid${1//\//_}.$2"; }
+
+  if [ "$tool" = Bash ] && [[ $cmd =~ mdgraph([[:space:]]+-g[[:space:]]+([^[:space:]\;\|\&]+))?[[:space:]]+index ]]; then
+    g=$(cd "${cwd:-.}" 2>/dev/null && graph_of "${BASH_REMATCH[2]:-.}" 2>/dev/null)
+    [ -n "$g" ] && touch "$(mark "$g" read)"
+    return 0
+  fi
+  if { [ "$tool" = Grep ] && [[ $pattern == *description* ]]; } || { [ "$tool" = Bash ] && [[ $cmd == *description* ]]; }; then
+    reading=1
+  fi
+
+  # A graph directory is itself a repository-shaped path under $PROJECTS, so check this first.
+  for p in "${paths[@]}"; do
+    r=$(repo_of "$p") || continue
+    g=$(resolve "$r")
+    [ -n "$g" ] || continue
+    rp=$(realpath -m "$p")
+    if [ "$rp" = "$g" ] || [[ $rp == "$g"/* ]]; then
+      [ $reading = 1 ] && touch "$(mark "$g" read)"
+      return 0
+    fi
+  done
+
+  for p in "${paths[@]}"; do repo=$(repo_of "$p") && break; repo=""; done
+  [ -n "$repo" ] || return 0
+  g=$(resolve "$repo")
+  [ -n "$g" ] && [ ! -e "$(mark "$g" read)" ] || return 0
+
+  if [[ $tool =~ ^(Edit|Write|MultiEdit|NotebookEdit|apply_patch)$ ]] ||
+     { [ "$tool" = Bash ] && grep -qE 'sed -i| > | >> |(^|[^[:alnum:]_])(tee|cp|mv|rm) |git commit' <<<"$cmd"; }; then
+    mutating=1
+  fi
+  [ $mutating = 1 ] && kind=deny || kind=ctx
+  [ -e "$(mark "$g" $kind)" ] && return 0
+  touch "$(mark "$g" $kind)"
+
+  n=$(entry_count "$g")
+  if [ "$(index_lines "$g" | wc -c)" -gt $SHOWN_OUTPUT ]; then
+    how="Its index is longer than one command's output shows, and the rest is cut without warning. Filter it for your topic: $SELF -g $g index <topic> ."
+  else
+    how="Read its index: $SELF -g $g index ."
+  fi
+  body="$repo has a memory graph at $g ($n entries), to read before changing this repository. $how Search entry bodies too: $SELF -g $g grep <term> . A recorded constraint, dead end or open question may already cover what you are about to do."
+  if [ $mutating = 1 ]; then
+    hook_json deny "$body This first write is refused so that the read happens before the change. Read the index, then retry. This fires once per repository per session."
+  else
+    hook_json context "$body"
+  fi
+}
+
+G=""
+while [ $# -gt 0 ]; do
+  case $1 in
+    -g) [ $# -ge 2 ] || die "-g needs a repository, graph path or name"; G=$(graph_of "$2") || exit 1; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) break ;;
+  esac
+done
+command=${1:-}; [ $# -gt 0 ] && shift
+
+case $command in
+  index|grep|refs|new|correct|commit|resolve) [ -n "$G" ] || G=$(graph_of .) || exit 1 ;;
+esac
+case $command in
+  index) cmd_index "$@" ;;
+  grep) cmd_grep "$@" ;;
+  refs) cmd_refs "$@" ;;
+  new) cmd_new "$@" ;;
+  correct) cmd_correct "$@" ;;
+  commit) cmd_commit "$@" ;;
+  resolve) echo "$G" ;;
+  list) cmd_list ;;
+  check) cmd_check "$@" ;;
+  hook)
+    case ${1:-} in
+      guard) hook_guard ;;
+      index) hook_index ;;
+      nudge) hook_nudge ;;
+      *) die "usage: mdgraph hook guard|index|nudge" ;;
+    esac ;;
+  ''|help) usage ;;
+  *) die "unknown command $command. Run mdgraph --help" ;;
+esac
