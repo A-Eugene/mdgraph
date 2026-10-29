@@ -126,7 +126,19 @@ Do not use the registry as the list.
 
 ## Install
 
-Use one method per machine. A plugin install and `install.sh` together register every hook twice.
+There are two ways to install, and each gives a tool the same skill, CLI and hooks:
+
+- **The tool's plugin system.** You run one command per tool, and the tool keeps mdgraph updated. See the sections for Claude Code, Codex and agy below.
+- **`install.sh`.** One command copies mdgraph into every tool it finds on the machine. See [By script](#by-script).
+
+Use one way per tool. A plugin install and `install.sh` in the same tool register every hook twice.
+
+| Tool | Plugin | Script | Hooks run |
+|---|---|---|---|
+| Claude Code | `/plugin install mdgraph@mdgraph` | `./install.sh claude` | yes |
+| Codex | `codex plugin add mdgraph@mdgraph` | `./install.sh codex` | yes, after you trust them in `/hooks` |
+| Antigravity CLI (agy) | `agy plugin install ./mdgraph` | `./install.sh agy` | no |
+| Any other agent that reads `SKILL.md` | none | copy `skills/mdgraph/` | depends on the agent |
 
 ### Claude Code
 
@@ -164,20 +176,25 @@ Any agent that reads Agent Skills (a folder holding a `SKILL.md`) can load `skil
 
 ### By script
 
-`install.sh` installs into `~/.claude` without the plugin system:
+`install.sh` installs without any plugin system, into every tool you name:
 
 ```bash
-./install.sh
+git clone https://github.com/A-Eugene/mdgraph
+cd mdgraph
+./install.sh                  # every tool whose folder exists: ~/.claude, ~/.codex, ~/.gemini
+./install.sh claude codex     # only the tools you name
 ```
 
-It does five things:
+For each tool it installs into:
 
-1. Copies the skill to `~/.claude/skills/mdgraph/` and the CLI to `~/.claude/skills/mdgraph/bin/mdgraph`.
-2. Deletes the hook scripts of earlier versions (`~/.claude/hooks/mdgraph-*.sh`).
-3. Registers three hooks in `~/.claude/settings.json` and replaces any earlier mdgraph hooks. Your other hooks and settings stay. It backs the file up to `settings.json.bak-mdgraph` first.
-4. Creates a plain home graph at `~/.mdgraph` for work that is not about one repository.
-5. Adds the home graph's line to the registry.
+| Tool | Skill and CLI | Hooks |
+|---|---|---|
+| `claude` | `~/.claude/skills/mdgraph/` | three hooks in `~/.claude/settings.json`, run with `"shell": "bash"`. It also deletes the hook scripts of earlier versions (`~/.claude/hooks/mdgraph-*.sh`). |
+| `codex` | `~/.codex/skills/mdgraph/` | three hooks in `~/.codex/hooks.json`, with `apply_patch` in the guard's matcher. Trust them in Codex with `/hooks`. |
+| `agy` | `~/.gemini/skills/mdgraph/` | none, since agy runs no hooks |
 
+- Each hooks file keeps its other hooks and settings. Earlier mdgraph hooks are replaced, and the file is backed up to `<file>.bak-mdgraph` first.
+- Every run also creates a plain home graph at `~/.mdgraph` for work that is not about one repository, and adds its line to the registry at `~/.claude/mdgraph-registry.txt`.
 - The CLI looks for repositories under `~/Projects`. Set `PROJECTS` when you run `install.sh` if yours are elsewhere, or set `MDGRAPH_PROJECTS` at run time.
 - Set `HOST` to put the home graph somewhere other than `~/.mdgraph`.
 - Files are copied, never symlinked. Run `install.sh` again after pulling.
@@ -204,11 +221,11 @@ One repository serves every agent. Each agent reads its own manifest, and all of
 | `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` | Claude Code, and agy, which converts it |
 | `.codex-plugin/plugin.json`, `.agents/plugins/marketplace.json` | Codex |
 | `bin/mdgraph` | Claude Code, which puts `bin/` on the Bash tool's `PATH`. It runs the CLI in `skills/mdgraph/bin/` |
-| `install.sh` | The script install |
+| `install.sh` | The script install, for Claude Code, Codex and agy |
 
 ## The hooks
 
-A rule binds only a session that has loaded it. The hooks handle what cannot be left to chance. Each is a subcommand of the CLI. A plugin install registers them from `hooks/hooks.json`. `install.sh` writes them into `~/.claude/settings.json`.
+A rule binds only a session that has loaded it. The hooks handle what cannot be left to chance. Each is a subcommand of the CLI. A plugin install registers them from `hooks/hooks.json`. `install.sh` writes them into `~/.claude/settings.json` and `~/.codex/hooks.json`.
 
 | Hook | Runs on | What it does |
 |---|---|---|
