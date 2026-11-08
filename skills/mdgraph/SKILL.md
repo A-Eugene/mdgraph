@@ -42,7 +42,7 @@ do not re-attempt" is an opinion and does not belong. Never mark anything
 closed.
 
 Record a decision only when you can name **who or what made it**: a stopping
-rule declared before the test ran, the operator's call, the date something was
+rule declared before the test ran, the user's call, the date something was
 adopted. Those are facts about the world. A session that reads a result and
 concludes the work should stop has not observed a decision. It has made one.
 So record the number and the mechanism, name the authority if there was one,
@@ -163,7 +163,8 @@ git worktree add ../mdgraph mdgraph
 ```
 
 Run it from a checkout inside the repository's folder, such as `<repo>/main`.
-A repository that is still a single checkout moves into that layout first:
+That layout is optional. A repository that is still a single checkout and
+should use it moves first:
 
 ```bash
 mv <repo> <repo>.tmp && mkdir <repo> && mv <repo>.tmp <repo>/main
@@ -238,7 +239,10 @@ without warning. The startup line marks an index that long as too long to print
 whole, and `mdgraph index` then refuses to print it. Filter it for your topic:
 `mdgraph index <topic>`. That read keeps a standing constraint in front of you.
 Until a session has read the index, the first write it makes in that repository
-is refused, once, so that the read happens before the change.
+is refused, once, so that the read happens before the change. The guard covers
+repositories under `$MDGRAPH_PROJECTS` (default `~/Projects`), registered
+projects, and any other git checkout outside your home folder. For a graph it
+does not cover, read the index yourself before the first change.
 
 ## Checking and repairing
 

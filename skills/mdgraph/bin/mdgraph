@@ -491,9 +491,25 @@ nudge_lines() {
 
 repo_of() {
   # The checkout holding a path: $PROJECTS/<repo>, or $PROJECTS/<repo>/<branch>.
-  local p rest top second
+  # Outside $PROJECTS: the deepest registered project holding it, other than home,
+  # else its git checkout.
+  local p rest top second d
   p=$(realpath -m "$1")
-  case "$p" in "$PROJECTS"/?*) ;; *) return 1 ;; esac
+  case "$p" in
+    "$PROJECTS"/?*) ;;
+    *)
+      top=""
+      for d in "${reg_projects[@]}"; do
+        d=${d%/}
+        [ "$d" != "$HOME" ] && [ ${#d} -gt ${#top} ] || continue
+        case "$p/" in "$d"/*) top=$d ;; esac
+      done
+      [ -n "$top" ] && { echo "$top"; return 0; }
+      d=$p; while [ ! -d "$d" ]; do d=$(dirname "$d"); done
+      top=$(git -C "$d" rev-parse --show-toplevel 2>/dev/null) || return 1
+      [ "$top" != "$HOME" ] || return 1
+      echo "$top"; return 0 ;;
+  esac
   rest=${p#"$PROJECTS"/}
   top="$PROJECTS/${rest%%/*}"
   if [ ! -e "$top/.git" ] && [[ $rest == */* ]]; then
