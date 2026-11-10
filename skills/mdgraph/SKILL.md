@@ -52,7 +52,12 @@ and leave the conclusion to the reader.
 
 Each thing worth remembering gets its own file, flat at the graph root. **The
 filename is the entry's identity and its link target**, so name it after the
-thing, not the date:
+thing, not the date. Name its subject in the words a search would use, and put
+the finding in the description. A name never changes, so a finding in it stays
+even after a later entry corrects it: `nq-rth-day-shape-joint-test`, not
+`nq-rth-eight-statistics-differ-jointly-in-sample-resting-on-the-0930-minute`.
+Leave existing names as they are, because renaming an entry breaks every link to
+it.
 
 ```markdown
 ---

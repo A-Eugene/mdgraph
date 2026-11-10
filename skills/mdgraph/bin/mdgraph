@@ -433,8 +433,9 @@ hook_index() {
   numbers, a dead end, an open question, a constraint found the hard way, a trap that cost
   time. Progress narration is not an entry.
 - Write one with: mdgraph -g <repo> new <name> "<description>" <<'EOF' ... EOF
-  It makes one file at the graph root, named for the thing and dated today. The description
-  is one sentence under 200 characters that says what you found.
+  It makes one file at the graph root, dated today. Name it for its subject in the words a
+  search would use, never for the finding. The description is one sentence under 200
+  characters that says what you found.
 - The body holds everything needed to reproduce the result or rule it out without you: the
   setup, the parameters, the numbers, the mechanism, what was tried and failed.
 - Record what happened, never a verdict: no "DEAD", no "do not re-attempt", nothing marked
