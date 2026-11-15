@@ -107,7 +107,7 @@ cd mdgraph
 - Each hooks file keeps its other hooks, and gets a backup at `<file>.bak-mdgraph` first.
 - Every run also creates a home graph at `~/.mdgraph` for work that is not about one repository.
 - The CLI looks for repositories under `~/Projects`. Set `PROJECTS` when you run `install.sh`, or `MDGRAPH_PROJECTS` at run time, if yours are elsewhere.
-- Run it again after pulling, since it copies files.
+- For `claude`, it also registers `update.sh` as a SessionStart hook. At each session start it checks GitHub, and when `main` has moved past the installed commit it reinstalls in the background with the same command and `PROJECTS`. The new version loads in the next session. An install from uncommitted or unpushed changes is left alone.
 
 ### Requirements
 

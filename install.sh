@@ -32,27 +32,40 @@ install_skill() {
 }
 
 register_hooks() {
-  # register_hooks <hooks file> <cli> <PreToolUse matcher> [shell]: replaces earlier mdgraph
-  # hooks and leaves every other hook alone. Backs the file up first.
+  # register_hooks <hooks file> <cli> <PreToolUse matcher> [shell] [updater]: replaces earlier
+  # mdgraph hooks and leaves every other hook alone. Backs the file up first.
   [ -f "$1" ] && cp "$1" "$1.bak-mdgraph"
   perl -MJSON::PP -e '
-    my ($path, $bin, $matcher, $shell) = @ARGV;
+    my ($path, $bin, $matcher, $shell, $updater) = @ARGV;
     my $json = JSON::PP->new->utf8->pretty->canonical->indent_length(2);
     my $d = {};
     if (-e $path) { local $/; open my $f, "<", $path or die "$path: $!"; $d = $json->decode(<$f>) }
     my $h = $d->{hooks} //= {};
     for my $event (keys %$h) {
       for my $e (@{$h->{$event}}) {
-        $e->{hooks} = [grep { ($_->{command} // "") !~ m{mdgraph-(guard|index|nudge)\.sh|/mdgraph"? hook } } @{$e->{hooks} || []}];
+        $e->{hooks} = [grep { ($_->{command} // "") !~ m{mdgraph-(guard|index|nudge)\.sh|/mdgraph"? hook |/mdgraph/update\.sh} } @{$e->{hooks} || []}];
       }
       $h->{$event} = [grep { @{$_->{hooks}} } @{$h->{$event}}];
     }
     my $hook = sub { {type => "command", command => "\"$bin\" hook $_[0]", ($shell ? (shell => $shell) : ())} };
     push @{$h->{SessionStart}}, {hooks => [$hook->("index")]};
+    push @{$h->{SessionStart}}, {hooks => [{type => "command", command => "\"$updater\""}]} if $updater;
     push @{$h->{Stop}}, {hooks => [$hook->("nudge")]};
     push @{$h->{PreToolUse}}, {matcher => $matcher, hooks => [$hook->("guard")]};
     open my $f, ">", $path or die "$path: $!"; print $f $json->encode($d);
   ' "$@"
+}
+
+record_source() {
+  # Auto-update: update.sh runs at every Claude Code session start and reinstalls from the source
+  # repo's main, with this same command, when main has moved past this install.
+  local dest=$1; shift
+  cp update.sh "$dest/"
+  git remote get-url origin > "$dest/.source" 2>/dev/null || echo https://github.com/A-Eugene/mdgraph > "$dest/.source"
+  local commit; commit=$(git rev-parse HEAD 2>/dev/null) || commit=
+  [ -z "$(git status --porcelain 2>/dev/null)" ] || commit="$commit-dirty"
+  echo "$commit" > "$dest/.commit"
+  echo "${PROJECTS:+PROJECTS=$(printf %q "$PROJECTS") }HOST=$(printf %q "$HOST") ./install.sh${*:+$(printf ' %q' "$@")}" > "$dest/.install"
 }
 
 for t in "${targets[@]}"; do
@@ -60,7 +73,8 @@ for t in "${targets[@]}"; do
     claude)
       bin=$(install_skill "$HOME/.claude/skills/mdgraph")
       rm -f "$HOME"/.claude/hooks/mdgraph-{guard,index,nudge,resolve}.sh
-      register_hooks "$HOME/.claude/settings.json" "$bin" "$GUARDED" bash
+      record_source "$HOME/.claude/skills/mdgraph" "$@"
+      register_hooks "$HOME/.claude/settings.json" "$bin" "$GUARDED" bash "$HOME/.claude/skills/mdgraph/update.sh"
       echo "claude: skill and CLI in $HOME/.claude/skills/mdgraph, 3 hooks in $HOME/.claude/settings.json" ;;
     codex)
       bin=$(install_skill "$HOME/.codex/skills/mdgraph")
