@@ -431,11 +431,11 @@ hook_index() {
 - Before relying on an entry, find the later entries that correct it: mdgraph -g <repo> refs <name>
 - Write an entry when a future session would otherwise repeat the work: a result and its
   numbers, a dead end, an open question, a constraint found the hard way, a trap that cost
-  time. Progress narration is not an entry.
+  30 minutes or more. Progress narration is not an entry.
 - Write one with: mdgraph -g <repo> new <name> "<description>" <<'EOF' ... EOF
   It makes one file at the graph root, dated today. Name it for its subject in the words a
-  search would use, never for the finding. The description is one sentence under 200
-  characters that says what you found.
+  search would use, never for the finding. The description is one sentence of 200
+  characters or fewer that says what you found.
 - The body holds everything needed to reproduce the result or rule it out without you: the
   setup, the parameters, the numbers, the mechanism, what was tried and failed.
 - Record what happened, never a verdict: no "DEAD", no "do not re-attempt", nothing marked
@@ -444,7 +444,7 @@ hook_index() {
   [[name]]. Then run: mdgraph -g <repo> correct <old> <new> "<what changed>"
   A description that starts with "Corrected by [[name]]" has a correction: read that entry.
   Write [[name]] only for an entry that exists.
-- A typo, or a description shortened to under 200 characters with the same meaning, may
+- A typo, or a description shortened to of 200 characters or fewer with the same meaning, may
   be fixed in place.
 - Commit with: mdgraph -g <repo> commit. Repair broken entries and graphs with: mdgraph check --fix
 === Graphs on this machine:

@@ -4,16 +4,13 @@ description: >-
   Durable memory for a repository: one markdown file per thing worth
   remembering, linked by name, kept on a dedicated `mdgraph` branch. Load this
   skill whenever something should outlive the session: a result and its
-  numbers, a question still open, a constraint learned the hard way, a decision
-  and who made it, a trap that cost time, a correction to an earlier entry, or a
-  last note before the context is compacted. Load it at the END of any
-  substantive task in a repository that has a graph, even when nobody asked you
+  numbers, a question still open, a constraint learned the hard way, a decision and who made it, a trap that cost 30 minutes or more, a correction to an earlier entry, or a
+  last note before the context is compacted. Load it at the END of any task in a repository that has a graph if the task produced one of those, even when nobody asked you
   to record anything, because that is the moment the knowledge would be lost.
   Load it before you propose, price or shortlist any option (a firm, a vendor, a
   library, a venue), since a recorded constraint may already rule a candidate
   out. Load it before you assert anything about past work, because a compacted
-  session keeps its conclusions and loses the reasons behind them. Load it when
-  `mdgraph check` reports problems or a graph looks broken. Use it to set up
+  session keeps its conclusions and loses the reasons behind them. Load it when `mdgraph check` reports problems or an mdgraph command fails. Use it to set up
   memory in a repository that has none. Reading an existing graph needs no
   skill: run `mdgraph index` or grep it.
 ---
@@ -50,7 +47,7 @@ and leave the conclusion to the reader.
 
 ## What an entry looks like
 
-Each thing worth remembering gets its own file, flat at the graph root. **The
+Each thing rule 2 says to record gets its own file, flat at the graph root. **The
 filename is the entry's identity and its link target**, so name it after the
 thing, not the date. Name its subject in the words a search would use, and put
 the finding in the description. A name never changes, so a finding in it stays
@@ -75,7 +72,7 @@ t=1.4 in-sample and 0.2 out. The burst is real. The direction is not.
 
 **Both frontmatter fields are required.**
 
-- `description` is one sentence of under about 200 characters that makes sense
+- `description` is one sentence of 200 characters or fewer that makes sense
   alone. It is the whole index. Sessions read descriptions and little else, and
   every session that reads the index pays for every description. Say what you
   found, not what the entry is about.
@@ -131,8 +128,7 @@ mdgraph -g <repo> commit ["<message>"]
    different files, so they cannot collide. A correction is a new entry that
    links the one it corrects. The earlier entry stays exactly as written,
    because it is what makes the correction make sense. The rule protects what
-   the writer believed, not how they typed it. So you may fix a few things in
-   place, since no claim changes: brackets around a word that never named an
+   the writer believed, not how they typed it. So you may fix these four things in place, since no claim changes: brackets around a word that never named an
    entry, a misspelled field name, a typo, and a description shortened to fit
    200 characters that still says the same thing.
 
@@ -145,7 +141,7 @@ mdgraph -g <repo> commit ["<message>"]
    push the description past 200 characters.
 2. **Write when a future session would otherwise repeat the work.** That means
    a result and its numbers, a dead end, an open question, a constraint found
-   the hard way, or a trap that cost an afternoon. Progress narration such as
+   the hard way, or a trap that cost 30 minutes or more. Progress narration such as
    "refactored the parser" does not qualify.
 3. **Date everything, in the text.** Put the date in `date:`. Also put it in the
    prose wherever a number depends on when it was measured. Without dates, a
@@ -168,8 +164,7 @@ git worktree add ../mdgraph mdgraph
 ```
 
 Run it from a checkout inside the repository's folder, such as `<repo>/main`.
-That layout is optional. A repository that is still a single checkout and
-should use it moves first:
+A repository that is still a single checkout moves into that layout only when the user agrees:
 
 ```bash
 mv <repo> <repo>.tmp && mkdir <repo> && mv <repo>.tmp <repo>/main
@@ -282,9 +277,8 @@ Some problems need judgement, so `check` reports them and leaves them:
 
 ## Housekeeping
 
-- If an entry is junk (a misfire, a duplicate, an entry about work that never
-  happened), delete the file. Not everything recorded is worth keeping.
+- If an entry is junk (a misfire, a duplicate, an entry about work that never happened), delete the file.
 - If a secret ends up in an entry, redact it and rotate it. Git history keeps
   the old copy either way, so rotating is the real fix.
-- A repository that already keeps its findings somewhere else keeps them there.
+- A repository whose README or CLAUDE.md names another place for its findings (a findings file, a wiki, a docs folder) keeps them there.
   Each repository needs one home for its memory, not necessarily this one.

@@ -26,7 +26,7 @@ t=1.4 in-sample and 0.2 out. The burst itself is real. The direction is not.
 - **Relates:** [[mgc-open-one-sided-commitment]]
 ```
 
-- `description` is one sentence under 200 characters. The descriptions together are the index a session reads.
+- `description` is one sentence of 200 characters or fewer. The descriptions together are the index a session reads.
 - An entry records numbers and mechanism, never a verdict. A correction is a new entry, and the earlier one gets a `Corrected by [[new-name]]` marker.
 
 **The `mdgraph` CLI** does every operation. `-g` picks a graph by repository path, graph path or name. Without it, the CLI uses the current directory's graph.
