@@ -444,7 +444,7 @@ hook_index() {
   [[name]]. Then run: mdgraph -g <repo> correct <old> <new> "<what changed>"
   A description that starts with "Corrected by [[name]]" has a correction: read that entry.
   Write [[name]] only for an entry that exists.
-- A typo, or a description shortened to of 200 characters or fewer with the same meaning, may
+- A typo, or a description shortened to 200 characters or fewer with the same meaning, may
   be fixed in place.
 - Commit with: mdgraph -g <repo> commit. Repair broken entries and graphs with: mdgraph check --fix
 === Graphs on this machine:
